@@ -1,0 +1,67 @@
+{
+    "id": "2026-10-20_12-14-15",
+    "filename": "2026-10-20_12-14-15.json",
+    "project_name": "Percobaan",
+    "user": {
+        "username": "Solihul Hadi",
+        "email": "dhiforester@gmail.com"
+    },
+    "created_at": "2026-10-20T12:18:18+00:00",
+    "updated_at": "2026-10-20T12:18:18+00:00",
+    "workflow": {
+        "nodeDataArray": [
+            {
+                "key": 1,
+                "title": "Data Input",
+                "subtitle": "Menunggu data",
+                "color": "#EF4444",
+                "icon": "📥",
+                "loc": "120 160"
+            },
+            {
+                "key": 2,
+                "title": "Processing",
+                "subtitle": "Siap diproses",
+                "color": "#EF4444",
+                "icon": "⚙️",
+                "loc": "360 160"
+            },
+            {
+                "key": 3,
+                "title": "API Service",
+                "subtitle": "Terhubung",
+                "color": "#3B82F6",
+                "icon": "🔌",
+                "loc": "600 160"
+            },
+            {
+                "key": 4,
+                "title": "Database",
+                "subtitle": "Siap menerima",
+                "color": "#000000",
+                "icon": "🗄️",
+                "loc": "840 160"
+            }
+        ],
+        "linkDataArray": [
+            {
+                "from": 1,
+                "to": 2,
+                "animated": true,
+                "color": "#EF4444"
+            },
+            {
+                "from": 2,
+                "to": 3,
+                "animated": true,
+                "color": "#EF4444"
+            },
+            {
+                "from": 3,
+                "to": 4,
+                "animated": true,
+                "color": "#3B82F6"
+            }
+        ]
+    }
+}

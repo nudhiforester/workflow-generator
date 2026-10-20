@@ -1,176 +1,427 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Neon Workflow</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
+  <!-- SEO & Metatags dari data/json/meta.json -->
+  <title>Workflow Generator</title>
+  <meta name="description" content="Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana">
+  <meta name="keywords" content="Workflow, Generator, HTML, CSS, Javascript, Diagram, Interaktif">
+  <meta name="author" content="Solihul Hadi">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="http://localhost/workflow-generator/">
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Workflow Generator">
+  <meta property="og:description" content="Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana">
+  <meta property="og:url" content="http://localhost/workflow-generator/">
+  <meta property="og:image" content="assets/img/user/logo.png">
+  <meta property="og:site_name" content="Workflow Generator">
+  <meta property="og:locale" content="id_ID">
 
-        body {
-            margin: 0;
-            padding: 32px;
-            background: #080d18;
-            color: #e5efff;
-            font-family: Arial, sans-serif;
-        }
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Workflow Generator">
+  <meta name="twitter:description" content="Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana">
+  <meta name="twitter:image" content="assets/img/user/logo.png">
 
-        h2 {
-            margin: 0 0 8px;
-        }
+  <!-- Favicon & Icons -->
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/img/pavicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/pavicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/img/pavicon/favicon-16x16.png">
+  <link rel="shortcut icon" href="assets/img/pavicon/favicon.ico">
+  <link rel="manifest" href="assets/img/pavicon/site.webmanifest">
 
-        .subtitle {
-            color: #8795ad;
-            margin-bottom: 28px;
-        }
+  <!-- Pustaka Lokal (Node Modules & Assets Font) - Tanpa CDN -->
+  <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="node_modules/bootstrap-icons/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="assets/css/style.css?v=1">
 
-        .workflow-wrapper {
-            overflow-x: auto;
-            border: 1px solid #253149;
-            border-radius: 16px;
-            background: #0b1220;
-        }
-
-        .workflow {
-            position: relative;
-            width: 100%;
-            min-width: 900px;
-            height: 320px;
-        }
-
-        .connections {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .cable {
-            fill: none;
-            stroke-width: 3;
-            stroke-linecap: round;
-            filter: drop-shadow(0 0 5px currentColor);
-        }
-
-        .cyan {
-            stroke: #00e5ff;
-            color: #00e5ff;
-        }
-
-        .purple {
-            stroke: #a855f7;
-            color: #a855f7;
-        }
-
-        .orange {
-            stroke: #ff9d42;
-            color: #ff9d42;
-        }
-
-        .node {
-            position: absolute;
-            top: 105px;
-            width: 150px;
-            height: 90px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            background: #111d30;
-            border: 1px solid #34445e;
-            border-radius: 12px;
-            box-shadow: 0 0 18px #0008;
-            z-index: 1;
-        }
-
-        .node-icon {
-            font-size: 23px;
-        }
-
-        .node-name {
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        .node-status {
-            font-size: 11px;
-            color: #91a3bd;
-        }
-
-        .node-1 { left: 3%; }
-        .node-2 { left: 28%; }
-        .node-3 { left: 53%; }
-        .node-4 { left: 78%; }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 18px;
-            }
-        }
-    </style>
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Workflow Generator",
+    "description": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
+    "author": {
+      "@type": "Person",
+      "name": "Solihul Hadi"
+    },
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "All"
+  }
+  </script>
 </head>
-
 <body>
 
-    <h2>Workflow Monitor</h2>
-    <div class="subtitle">
-        Visualisasi aliran data antarsistem
+  <!-- =======================================================================
+       1. HALAMAN LOGIN (Split-Screen Kuning / Hitam)
+       ======================================================================= -->
+  <main id="loginView" class="login-wrapper" style="display: flex;">
+    <div class="login-glass-card">
+      <h1 class="login-title">Welcome</h1>
+      <p class="login-subtitle">Enter your email and password to log in</p>
+
+      <div id="loginAlert" class="login-alert" role="alert" aria-live="assertive" hidden></div>
+
+      <div class="login-inner-card">
+        <form id="loginForm" autocomplete="off" novalidate>
+          <!-- Form Email -->
+          <div class="mb-3">
+            <label for="loginEmail" class="form-label-custom">Email</label>
+            <input type="email" id="loginEmail" class="form-control-custom" placeholder="Enter Your Email" autocomplete="off" required>
+          </div>
+
+          <!-- Form Password -->
+          <div class="mb-3">
+            <label for="loginPassword" class="form-label-custom">Password</label>
+            <div class="input-group-password">
+              <input type="password" id="loginPassword" class="form-control-custom" placeholder="Enter Your Password" autocomplete="off" required>
+              <button type="button" id="btnTogglePwd" class="btn-toggle-pwd" title="Tampilkan password" aria-label="Tampilkan password" aria-pressed="false">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tombol CTA Login -->
+          <button type="submit" id="btnLoginSubmit" class="btn-cta-primary">
+            Sign In
+          </button>
+
+          <!-- Teks Bantuan / Keterangan Dokumentasi -->
+          <p class="login-helper-text">
+            Read the documentation to understand how access credentials are created
+          </p>
+
+        </form>
+      </div>
     </div>
+  </main>
 
-    <div class="workflow-wrapper">
-        <div class="workflow">
-
-            <!-- Kabel penghubung -->
-            <svg class="connections"
-                 viewBox="0 0 900 320"
-                 preserveAspectRatio="none">
-
-                <path class="cable cyan"
-                      d="M 150 150 H 250" />
-
-                <path class="cable purple"
-                      d="M 375 150 H 475" />
-
-                <path class="cable orange"
-                      d="M 600 150 H 700" />
-
-            </svg>
-
-            <!-- Node 1 -->
-            <div class="node node-1">
-                <div class="node-icon">📥</div>
-                <div class="node-name">Data Input</div>
-                <div class="node-status">Menunggu data</div>
-            </div>
-
-            <!-- Node 2 -->
-            <div class="node node-2">
-                <div class="node-icon">⚙️</div>
-                <div class="node-name">Processing</div>
-                <div class="node-status">Siap diproses</div>
-            </div>
-
-            <!-- Node 3 -->
-            <div class="node node-3">
-                <div class="node-icon">🔌</div>
-                <div class="node-name">API Service</div>
-                <div class="node-status">Terhubung</div>
-            </div>
-
-            <!-- Node 4 -->
-            <div class="node node-4">
-                <div class="node-icon">🗄️</div>
-                <div class="node-name">Database</div>
-                <div class="node-status">Siap menerima</div>
-            </div>
-
+  <!-- =======================================================================
+       2. HALAMAN UTAMA WORKSPACE (Workflow Generator)
+       ======================================================================= -->
+  <div id="mainAppView" class="app-container" style="display: none;">
+    
+    <!-- Top Header Bar -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="header-logo-icon">
+          <img src="assets/img/icon/tree.svg" alt="Workflow Generator Logo" width="32" height="32">
         </div>
-    </div>
+        <div class="header-title-wrap">
+          <span class="header-title-bold">Workflow</span>
+          <span class="header-title-light">Generator</span>
+        </div>
+      </div>
 
+      <div class="header-actions">
+        <!-- Tombol Toggle Mode Gelap / Terang -->
+        <button type="button" id="btnThemeToggle" class="btn-theme-toggle" title="Ubah Mode Gelap/Terang" aria-label="Toggle Dark/Light Mode">
+          <i id="themeIcon" class="bi bi-sun-fill"></i>
+        </button>
+
+        <!-- Profil Pengguna & Dropdown -->
+        <div class="dropdown">
+          <button class="user-profile-btn dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <img id="headerUserAvatar" src="assets/img/user/no-image.png" alt="Avatar" class="user-avatar-img">
+            <span id="headerUserName" class="user-display-name">Solihul Hadi</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenuDropdown">
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="#" id="menuViewProfile">
+                <i class="bi bi-person-circle"></i> Lihat Profil
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="#" id="menuEditProfile">
+                <i class="bi bi-pencil-square"></i> Edit Profil
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="#" id="menuLogout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Workspace Area (Sidebar Kiri & Canvas Workspace) -->
+    <div class="app-workspace">
+      
+      <!-- Toolbar Kiri (Sidebar Navigasi) -->
+      <aside class="app-sidebar">
+        <!-- Tombol Tambah Project Baru -->
+        <button type="button" id="btnCreateProject" class="btn-create-project">
+          <i class="bi bi-folder-plus"></i> Creat Project
+        </button>
+
+        <div class="sidebar-heading">List Project</div>
+
+        <!-- Daftar Project Sesuai project_by_user.json -->
+        <ul id="projectList" class="project-list">
+          <!-- Item project dimuat dinamis oleh Javascript -->
+        </ul>
+      </aside>
+
+      <!-- Canvas Area (GoJS Workspace) -->
+      <main class="canvas-wrapper">
+        
+        <!-- Wadah Diagram GoJS -->
+        <div id="workflowDiagramDiv"></div>
+
+        <!-- Floating Panel Kiri Atas: Nama Project & Tombol Simpan -->
+        <section class="floating-project-box" aria-label="Project Controls">
+          <input type="text" id="inputProjectName" class="input-project-name" placeholder="Project Name" value="Untitled Workflow">
+          <button type="button" id="btnSaveProject" class="btn-project-save">
+            <i class="bi bi-floppy"></i> Save
+          </button>
+          <div id="saveStatusText" class="save-status-text">Siap</div>
+        </section>
+
+        <!-- Floating Toolbar Kanan Atas: Add Shape & Download -->
+        <aside class="floating-canvas-toolbar" aria-label="Canvas Actions">
+          <!-- Tombol Add Shape -->
+          <button type="button" id="btnAddShape" class="toolbar-btn" title="Add Shape" aria-label="Add Shape">
+            <i class="bi bi-plus-square"></i>
+            <span class="toolbar-tooltip-label">Add Shape</span>
+          </button>
+
+          <!-- Tombol Download -->
+          <div class="position-relative">
+            <button type="button" id="btnDownload" class="toolbar-btn" title="Download Workflow" aria-label="Download Diagram">
+              <i class="bi bi-download"></i>
+              <span class="toolbar-tooltip-label">Download PNG, JPG</span>
+            </button>
+
+            <!-- Dropdown Menu Download -->
+            <ul id="downloadMenu" class="dropdown-menu dropdown-menu-end shadow-lg" style="display: none; position: absolute; right: 55px; top: 0; min-width: 170px;">
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#" data-download-format="png">
+                  <i class="bi bi-filetype-png text-primary"></i> Download PNG
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#" data-download-format="jpg">
+                  <i class="bi bi-filetype-jpg text-success"></i> Download JPG
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#" data-download-format="json">
+                  <i class="bi bi-filetype-json text-warning"></i> Export JSON
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#" data-download-format="svg">
+                  <i class="bi bi-filetype-svg text-danger"></i> Export SVG
+                </a>
+              </li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- Floating Popover Inspector: Detail Shape Aktif -->
+        <section id="nodeInspector" class="floating-inspector-panel" style="display: none;" aria-label="Shape Inspector">
+          <div class="inspector-header">
+            <span class="inspector-title">Detail Shape</span>
+            <button type="button" id="btnCloseNodeInspector" class="inspector-close-btn" aria-label="Close Inspector">&times;</button>
+          </div>
+
+          <div>
+            <label class="form-label-custom" style="font-size: 0.76rem;">Title</label>
+            <input type="text" id="nodeTitleInput" class="inspector-input" placeholder="Title">
+          </div>
+
+          <div>
+            <label class="form-label-custom" style="font-size: 0.76rem;">Subtitle</label>
+            <input type="text" id="nodeSubtitleInput" class="inspector-input" placeholder="Subtitle">
+          </div>
+
+          <div>
+            <label class="form-label-custom" style="font-size: 0.76rem;">#Color Border</label>
+            <div id="nodeColorPresets" class="color-picker-row"></div>
+          </div>
+
+          <div>
+            <label class="form-label-custom" style="font-size: 0.76rem;">Icon</label>
+            <button type="button" id="btnOpenIconPicker" class="btn-icon-selector">
+              <span>Ikon: 📥</span> <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+
+          <div class="inspector-actions-row">
+            <button type="button" id="btnSaveNodeInspector" class="btn-inspector-save">
+              Save
+            </button>
+            <button type="button" id="btnDeleteNode" class="btn-inspector-delete" title="Hapus Shape">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </section>
+
+        <!-- Floating Popover Inspector: Detail Garis / Connector Aktif -->
+        <section id="linkInspector" class="floating-inspector-panel" style="display: none;" aria-label="Link Inspector">
+          <div class="inspector-header">
+            <span class="inspector-title">Detail Garis</span>
+            <button type="button" id="btnCloseLinkInspector" class="inspector-close-btn" aria-label="Close Inspector">&times;</button>
+          </div>
+
+          <div>
+            <label class="form-label-custom" style="font-size: 0.76rem;">Warna Garis</label>
+            <div id="linkColorPresets" class="color-picker-row"></div>
+          </div>
+
+          <div class="mt-2">
+            <label class="form-check-custom">
+              <input type="checkbox" id="linkAnimToggle" class="form-check-input mt-0">
+              <span>Animasi Air / Cahaya</span>
+            </label>
+          </div>
+
+          <div class="inspector-actions-row mt-2">
+            <button type="button" id="btnDeleteLink" class="btn-inspector-delete w-100" title="Hapus Garis">
+              <i class="bi bi-trash"></i> Hapus Garis
+            </button>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       3. MODAL DIALOGS
+       ======================================================================= -->
+
+  <!-- Modal: Tambah Project Baru -->
+  <div class="modal fade" id="modalNewProject" tabindex="-1" aria-labelledby="modalNewProjectLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header modal-header-custom">
+          <h2 class="modal-title fs-5" id="modalNewProjectLabel">
+            <i class="bi bi-folder-plus me-2 text-warning"></i>Buat Project Baru
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="formNewProject">
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label for="inputNewProjectTitle" class="form-label-custom">Nama Project</label>
+              <input type="text" id="inputNewProjectTitle" class="form-control-custom" placeholder="Contoh: Alur Approval Dokumen" required>
+            </div>
+            <p class="small text-muted mb-0">
+              Project akan disimpan otomatis ke dalam file JSON unik berdasarkan tanggal dan waktu.
+            </p>
+          </div>
+          <div class="modal-footer modal-footer-custom">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-warning btn-sm fw-bold">Buat Project</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Lihat Profil Pengguna -->
+  <div class="modal fade" id="modalProfileView" tabindex="-1" aria-labelledby="modalProfileViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header modal-header-custom">
+          <h2 class="modal-title fs-5" id="modalProfileViewLabel">
+            <i class="bi bi-person-badge me-2"></i>Informasi Profil
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+          <img src="assets/img/user/no-image.png" alt="Profile" class="rounded-circle border mb-3" width="80" height="80">
+          <h3 class="fs-5 fw-bold mb-1" id="profileViewName">Solihul Hadi</h3>
+          <p class="text-muted small mb-3" id="profileViewEmail">dhiforester@gmail.com</p>
+
+          <div class="bg-light p-3 rounded-3 text-start small">
+            <div class="row mb-2">
+              <div class="col-4 text-muted">Kontak:</div>
+              <div class="col-8 fw-semibold" id="profileViewContact">089601154726</div>
+            </div>
+            <div class="row">
+              <div class="col-4 text-muted">Role:</div>
+              <div class="col-8 fw-semibold">Administrator</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer modal-footer-custom">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Profil Pengguna -->
+  <div class="modal fade" id="modalProfileEdit" tabindex="-1" aria-labelledby="modalProfileEditLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header modal-header-custom">
+          <h2 class="modal-title fs-5" id="modalProfileEditLabel">
+            <i class="bi bi-pencil-square me-2"></i>Edit Profil
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="formProfileEdit">
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label for="editProfileName" class="form-label-custom">Nama Pengguna</label>
+              <input type="text" id="editProfileName" class="form-control-custom" required>
+            </div>
+            <div class="mb-3">
+              <label for="editProfileContact" class="form-label-custom">No. Kontak</label>
+              <input type="text" id="editProfileContact" class="form-control-custom">
+            </div>
+            <div class="mb-3">
+              <label for="editProfilePassword" class="form-label-custom">Ubah Password (Kosongkan jika tidak diubah)</label>
+              <input type="password" id="editProfilePassword" class="form-control-custom" placeholder="Password baru">
+            </div>
+          </div>
+          <div class="modal-footer modal-footer-custom">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-warning btn-sm fw-bold">Simpan Perubahan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Pilihan Ikon Shape -->
+  <div class="modal fade" id="modalIconPicker" tabindex="-1" aria-labelledby="modalIconPickerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header modal-header-custom">
+          <h2 class="modal-title fs-6" id="modalIconPickerLabel">
+            <i class="bi bi-emoji-smile me-1"></i>Pilih Ikon Shape
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-3">
+          <div id="iconGridContainer" class="icon-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container Notifikasi Toast -->
+  <div id="toastContainer" class="toast-container-custom"></div>
+
+  <!-- Pustaka JavaScript Lokal (Node Modules & Assets) - Tanpa CDN -->
+  <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="node_modules/gojs/release/go.js"></script>
+  <script src="assets/js/main.js"></script>
 </body>
 </html>

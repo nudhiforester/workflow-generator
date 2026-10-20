@@ -20,7 +20,7 @@
     "og:title": "Workflow Generator",
     "og:description": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
     "og:url": "http://localhost/workflow-generator/",
-    "og:image": "http://localhost/workflow-generator/assets/img/user/person.png",
+    "og:image": "http://localhost/workflow-generator/assets/img/user/logo.png",
     "og:site_name": "Workflow Generator",
     "og:locale": "id_ID"
   },
@@ -28,15 +28,15 @@
     "twitter:card": "summary_large_image",
     "twitter:title": "Workflow Generator",
     "twitter:description": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
-    "twitter:image": "http://localhost/workflow-generator/assets/img/user/person.png"
+    "twitter:image": "http://localhost/workflow-generator/assets/img/user/logo.png"
   },
   "schema_json_ld": {
     "@context": "https://schema.org",
     "@type": "Person",
-    "name": "Solihul Hadi",
-    "jobTitle": "Web Developer",
+    "name": "Workflow Generator",
+    "jobTitle": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
     "url": "http://localhost/workflow-generator/",
-    "image": "http://localhost/workflow-generator/assets/img/user/person.png",
+    "image": "http://localhost/workflow-generator/assets/img/user/logo.png",
     "knowsAbout": [
       "Workflow",
       "Generator",
