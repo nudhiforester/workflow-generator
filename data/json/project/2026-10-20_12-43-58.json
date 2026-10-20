@@ -1,0 +1,55 @@
+{
+    "id": "2026-10-20_12-43-58",
+    "filename": "2026-10-20_12-43-58.json",
+    "project_name": "Baru",
+    "user": {
+        "username": "Solihul Hadi",
+        "email": "dhiforester@gmail.com"
+    },
+    "created_at": "2026-10-20T14:56:14+00:00",
+    "updated_at": "2026-10-20T14:56:14+00:00",
+    "workflow": {
+        "nodeDataArray": [
+            {
+                "key": 1792500880717,
+                "title": "Tahap 1",
+                "subtitle": "Deskripsi alur",
+                "color": "#22C55E",
+                "icon": "📥",
+                "loc": "-466 -127"
+            },
+            {
+                "key": 1792500887118,
+                "title": "Tahap 2",
+                "subtitle": "Deskripsi alur",
+                "color": "#EF4444",
+                "icon": "⚙️",
+                "loc": "23 -191"
+            },
+            {
+                "key": 1792500931102,
+                "title": "Tahap 3",
+                "subtitle": "Deskripsi alur",
+                "color": "#000000",
+                "icon": "🔌",
+                "loc": "32 -318"
+            }
+        ],
+        "linkDataArray": [
+            {
+                "from": 1792500880717,
+                "to": 1792500887118,
+                "animated": true,
+                "routeStyle": "curved",
+                "color": "#3B82F6"
+            },
+            {
+                "from": 1792500880717,
+                "to": 1792500931102,
+                "animated": true,
+                "routeStyle": "elbowed",
+                "color": "#3B82F6"
+            }
+        ]
+    }
+}

@@ -6,60 +6,93 @@
         "username": "Solihul Hadi",
         "email": "dhiforester@gmail.com"
     },
-    "created_at": "2026-10-20T12:18:18+00:00",
-    "updated_at": "2026-10-20T12:18:18+00:00",
+    "created_at": "2026-10-20T14:56:20+00:00",
+    "updated_at": "2026-10-20T14:56:20+00:00",
     "workflow": {
         "nodeDataArray": [
             {
-                "key": 1,
-                "title": "Data Input",
-                "subtitle": "Menunggu data",
-                "color": "#EF4444",
+                "key": 1792501900295,
+                "title": "Pasien",
+                "subtitle": "Pendaftaran",
+                "color": "#22C55E",
                 "icon": "📥",
-                "loc": "120 160"
+                "loc": "-256.2550375000001 92.04335625"
             },
             {
-                "key": 2,
-                "title": "Processing",
-                "subtitle": "Siap diproses",
+                "key": 1792501918134,
+                "title": "Rawat Inap",
+                "subtitle": "Pendaftaran",
                 "color": "#EF4444",
                 "icon": "⚙️",
-                "loc": "360 160"
+                "loc": "42.86457499999989 -14.921193750000043"
             },
             {
-                "key": 3,
-                "title": "API Service",
-                "subtitle": "Terhubung",
-                "color": "#3B82F6",
-                "icon": "🔌",
-                "loc": "600 160"
-            },
-            {
-                "key": 4,
-                "title": "Database",
-                "subtitle": "Siap menerima",
+                "key": 1792502030959,
+                "title": "Tahap 3",
+                "subtitle": "Deskripsi alur",
                 "color": "#000000",
+                "icon": "🔌",
+                "loc": "312.8120374999999 -24.64524375000005"
+            },
+            {
+                "key": 1792502039783,
+                "title": "Tahap 4",
+                "subtitle": "Deskripsi alur",
+                "color": "#3B82F6",
                 "icon": "🗄️",
-                "loc": "840 160"
+                "loc": "45.50573749999978 137.0170875"
+            },
+            {
+                "key": 1792502045391,
+                "title": "Tahap 5",
+                "subtitle": "Deskripsi alur",
+                "color": "#FFCC00",
+                "icon": "🚀",
+                "loc": "60.99209374999995 285.52563125"
+            },
+            {
+                "key": 1792502053392,
+                "title": "Tahap 6",
+                "subtitle": "Deskripsi alur",
+                "color": "#A855F7",
+                "icon": "🔔",
+                "loc": "74.46773749999988 421.6623312500001"
             }
         ],
         "linkDataArray": [
             {
-                "from": 1,
-                "to": 2,
+                "from": 1792501900295,
+                "to": 1792501918134,
                 "animated": true,
-                "color": "#EF4444"
+                "routeStyle": "curved",
+                "color": "#22C55E"
             },
             {
-                "from": 2,
-                "to": 3,
+                "from": 1792501918134,
+                "to": 1792502030959,
                 "animated": true,
-                "color": "#EF4444"
+                "routeStyle": "curved",
+                "color": "#3B82F6"
             },
             {
-                "from": 3,
-                "to": 4,
+                "from": 1792501900295,
+                "to": 1792502039783,
                 "animated": true,
+                "routeStyle": "curved",
+                "color": "#3B82F6"
+            },
+            {
+                "from": 1792501900295,
+                "to": 1792502045391,
+                "animated": true,
+                "routeStyle": "curved",
+                "color": "#3B82F6"
+            },
+            {
+                "from": 1792501900295,
+                "to": 1792502053392,
+                "animated": true,
+                "routeStyle": "curved",
                 "color": "#3B82F6"
             }
         ]

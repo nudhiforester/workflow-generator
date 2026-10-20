@@ -74,12 +74,19 @@
     themeIcon: document.getElementById('themeIcon'),
     headerUserAvatar: document.getElementById('headerUserAvatar'),
     headerUserName: document.getElementById('headerUserName'),
+    userMenuButton: document.getElementById('userMenuDropdown'),
+    userProfileMenu: document.getElementById('userProfileMenu'),
     menuViewProfile: document.getElementById('menuViewProfile'),
     menuEditProfile: document.getElementById('menuEditProfile'),
     menuLogout: document.getElementById('menuLogout'),
 
     // Sidebar & Projects
     btnCreateProject: document.getElementById('btnCreateProject'),
+    popoverCreateProject: document.getElementById('popoverCreateProject'),
+    formCreateProjectPopover: document.getElementById('formCreateProjectPopover'),
+    inputPopoverProjectName: document.getElementById('inputPopoverProjectName'),
+    btnCloseCreatePopover: document.getElementById('btnCloseCreatePopover'),
+    btnCancelCreatePopover: document.getElementById('btnCancelCreatePopover'),
     projectList: document.getElementById('projectList'),
 
     // Canvas Floating Controls
@@ -103,14 +110,11 @@
     linkInspector: document.getElementById('linkInspector'),
     linkColorPresets: document.getElementById('linkColorPresets'),
     linkAnimToggle: document.getElementById('linkAnimToggle'),
+    linkRouteStyle: document.getElementById('linkRouteStyle'),
     btnDeleteLink: document.getElementById('btnDeleteLink'),
     btnCloseLinkInspector: document.getElementById('btnCloseLinkInspector'),
 
     // Modals
-    modalNewProject: createModal('modalNewProject'),
-    formNewProject: document.getElementById('formNewProject'),
-    inputNewProjectTitle: document.getElementById('inputNewProjectTitle'),
-
     modalProfileView: createModal('modalProfileView'),
     profileViewName: document.getElementById('profileViewName'),
     profileViewEmail: document.getElementById('profileViewEmail'),
@@ -228,6 +232,13 @@
     el.mainAppView.style.display = 'flex';
     try {
       initDiagramOnce();
+      // Pastikan tampilan awal lembar kerja bersih & kosong
+      if (state.diagram) {
+        state.diagram.model = new go.GraphLinksModel({ nodeDataArray: [], linkDataArray: [] });
+      }
+      state.currentProject = null;
+      if (el.inputProjectName) el.inputProjectName.value = '';
+      if (el.saveStatusText) el.saveStatusText.textContent = 'Lembar kerja kosong';
     } catch (diagramErr) {
       console.error('Error saat inisialisasi diagram GoJS:', diagramErr);
     }
@@ -305,6 +316,7 @@
   // Logout
   el.menuLogout.addEventListener('click', function (e) {
     e.preventDefault();
+    hideProfileMenu();
     if (confirm('Apakah Anda yakin ingin keluar?')) {
       state.currentUser = null;
       state.currentProject = null;
@@ -317,13 +329,28 @@
   // View Profile Modal
   el.menuViewProfile.addEventListener('click', function (e) {
     e.preventDefault();
+    hideProfileMenu();
     el.modalProfileView.show();
   });
 
   // Edit Profile Modal
   el.menuEditProfile.addEventListener('click', function (e) {
     e.preventDefault();
+    hideProfileMenu();
     el.modalProfileEdit.show();
+  });
+
+  // Toggle profile menu explicitly so it stays closed until requested.
+  function hideProfileMenu() {
+    el.userProfileMenu.hidden = true;
+    el.userMenuButton.setAttribute('aria-expanded', 'false');
+  }
+
+  el.userMenuButton.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const willOpen = el.userProfileMenu.hidden;
+    el.userProfileMenu.hidden = !willOpen;
+    el.userMenuButton.setAttribute('aria-expanded', String(willOpen));
   });
 
   // Save Edit Profile
@@ -432,12 +459,14 @@
 
     state.diagram = diagram;
 
-    // Helper membuat Port titik koneksi pada 4 sisi node
+    // Helper membuat Port titik koneksi pada 4 sisi node (Terlihat jelas agar user tahu tempat klik garis)
     function makePort(name, spot, output, input) {
       return $(go.Shape, 'Circle', {
-        fill: 'transparent',
-        stroke: null,
-        desiredSize: new go.Size(10, 10),
+        name: 'PORT_' + name,
+        fill: state.theme === 'dark' ? '#1E293B' : '#FFFFFF',
+        stroke: '#000000',
+        strokeWidth: 2,
+        desiredSize: new go.Size(12, 12),
         alignment: spot,
         alignmentFocus: spot,
         portId: name,
@@ -445,7 +474,16 @@
         toSpot: spot,
         fromLinkable: output,
         toLinkable: input,
-        cursor: 'crosshair'
+        cursor: 'crosshair',
+        // Visual feedback saat cursor hover di atas port titik koneksi
+        mouseEnter: (e, port) => {
+          port.fill = '#FFCC00';
+          port.scale = 1.35;
+        },
+        mouseLeave: (e, port) => {
+          port.fill = state.theme === 'dark' ? '#1E293B' : '#FFFFFF';
+          port.scale = 1.0;
+        }
       });
     }
 
@@ -454,8 +492,10 @@
       go.Node, 'Spot',
       {
         locationSpot: go.Spot.Center,
-        fromLinkable: true,
-        toLinkable: true,
+        // Body node tidak menjadi linkable agar drag-and-drop berfungsi lancar untuk menggeser node
+        fromLinkable: false,
+        toLinkable: false,
+        movable: true,
         cursor: 'move',
         selectionAdornmentTemplate: $(
           go.Adornment, 'Auto',
@@ -493,7 +533,7 @@
             go.TextBlock,
             {
               name: 'ICON',
-              font: '20px sans-serif',
+              font: '22px sans-serif',
               textAlign: 'center',
               margin: new go.Margin(0, 0, 2, 0)
             },
@@ -507,6 +547,7 @@
               font: 'bold 13px sans-serif',
               stroke: state.theme === 'dark' ? '#F8FAFC' : '#000000',
               textAlign: 'center',
+              margin: new go.Margin(0, 0, 2, 0),
               maxLines: 1,
               overflow: go.TextOverflow.Ellipsis
             },
@@ -528,7 +569,7 @@
         )
       ),
 
-      // 4 Port Titik Penghubung (Top, Bottom, Left, Right)
+      // 4 Port Titik Penghubung Terlihat Jelas (Top, Bottom, Left, Right)
       makePort('T', go.Spot.Top, true, true),
       makePort('B', go.Spot.Bottom, true, true),
       makePort('L', go.Spot.Left, true, true),
@@ -539,7 +580,7 @@
     diagram.linkTemplate = $(
       go.Link,
       {
-        routing: go.Routing.AvoidsNodes,
+        routing: go.Routing.Normal,
         curve: go.Curve.Bezier,
         corner: 12,
         toShortLength: 4,
@@ -550,10 +591,12 @@
           $(go.Shape, { isPanelMain: true, stroke: '#FFCC00', strokeWidth: 5, strokeDashArray: [4, 4] })
         )
       },
+      new go.Binding('routing', 'routeStyle', style => style === 'elbowed' ? go.Routing.Orthogonal : go.Routing.Normal),
+      new go.Binding('curve', 'routeStyle', style => !style || style === 'curved' ? go.Curve.Bezier : go.Curve.None),
       // Jalur Garis Utama (Base Line)
       $(
         go.Shape,
-        { isPanelMain: true, strokeWidth: 3 },
+        { isPanelMain: true, strokeWidth: 3.5 },
         new go.Binding('stroke', 'color', c => c || CONFIG.DEFAULT_COLOR)
       ),
       // Jalur Animasi Cahaya / Air Mengalir (Pipe)
@@ -565,6 +608,7 @@
           strokeWidth: 3,
           stroke: '#FFFFFF',
           strokeDashArray: [10, 10],
+          strokeCap: 'round',
           visible: false
         },
         new go.Binding('visible', 'animated', a => !!a),
@@ -573,7 +617,7 @@
       // Ujung Panah (Arrowhead)
       $(
         go.Shape,
-        { toArrow: 'Standard', strokeWidth: 0, scale: 1.35 },
+        { toArrow: 'Standard', strokeWidth: 0, scale: 1.4 },
         new go.Binding('fill', 'color', c => c || CONFIG.DEFAULT_COLOR)
       )
     );
@@ -599,33 +643,65 @@
       }
     });
 
-    // Jalankan loop animasi aliran cahaya/air
-    startFlowAnimation();
+    // Event Listener klik background lembar kerja menutup inspector
+    diagram.addDiagramListener('BackgroundSingleClicked', function () {
+      hideInspectors();
+    });
+
+    // Event Listener saat garis baru dibuat / dihubungkan
+    diagram.addDiagramListener('LinkDrawn', function (e) {
+      const link = e.subject;
+      if (link && link.data) {
+        diagram.model.commit(m => {
+          m.set(link.data, 'animated', true);
+          if (!link.data.routeStyle) m.set(link.data, 'routeStyle', 'curved');
+          if (!link.data.color) {
+            m.set(link.data, 'color', '#3B82F6');
+          }
+        }, 'initLinkData');
+      }
+      updateFlowAnimation();
+    });
+    diagram.addDiagramListener('LinkRelinked', function () {
+      updateFlowAnimation();
+    });
+    diagram.addDiagramListener('SelectionDeleted', function () {
+      updateFlowAnimation();
+    });
+
+    // Inisialisasi animasi aliran cahaya/air
+    updateFlowAnimation();
   }
 
-  // Animasi Aliran Cahaya / Air pada Garis
-  let dashOffset = 0;
-  function startFlowAnimation() {
-    if (state.flowAnimationId) return;
-
-    function renderFlow() {
-      dashOffset -= 0.75;
-      if (dashOffset <= -20) dashOffset = 0;
-
-      if (state.diagram) {
-        state.diagram.links.each(link => {
-          if (link.data && link.data.animated) {
-            const pipe = link.findObject('PIPE');
-            if (pipe) {
-              pipe.strokeDashOffset = dashOffset;
-            }
-          }
-        });
-      }
-      state.flowAnimationId = requestAnimationFrame(renderFlow);
+  // Animasi Aliran Cahaya / Air pada Garis menggunakan go.Animation loop
+  let flowAnimation = null;
+  function updateFlowAnimation() {
+    if (flowAnimation) {
+      flowAnimation.stop();
+      flowAnimation = null;
     }
+    if (!state.diagram) return;
 
-    state.flowAnimationId = requestAnimationFrame(renderFlow);
+    const anim = new go.Animation();
+    anim.easing = go.Animation.EaseLinear;
+    anim.runCount = Infinity; // Berjalan berulang terus-menerus
+    anim.duration = 1000;
+
+    let hasAnimated = false;
+    state.diagram.links.each(link => {
+      if (link.data && link.data.animated) {
+        const pipe = link.findObject('PIPE');
+        if (pipe) {
+          anim.add(pipe, 'strokeDashOffset', 20, 0);
+          hasAnimated = true;
+        }
+      }
+    });
+
+    if (hasAnimated) {
+      anim.start();
+      flowAnimation = anim;
+    }
   }
 
   function hideInspectors() {
@@ -689,7 +765,9 @@
       d.model.set(node.data, 'title', el.nodeTitleInput.value.trim() || 'Title');
       d.model.set(node.data, 'subtitle', el.nodeSubtitleInput.value.trim() || 'Subtitle');
     }, 'updateNodeInfo');
-    showToast('Detail shape disimpan.', 'info');
+    hideInspectors();
+    state.diagram.clearSelection();
+    showToast('Detail shape disimpan.', 'success');
   });
 
   // Realtime input binding untuk node title & subtitle
@@ -750,6 +828,7 @@
   function showLinkInspector(link) {
     const data = link.data;
     el.linkAnimToggle.checked = !!data.animated;
+    el.linkRouteStyle.value = data.routeStyle || 'curved';
 
     renderColorPresets(el.linkColorPresets, data.color || CONFIG.DEFAULT_COLOR, (newColor) => {
       state.diagram.commit(d => {
@@ -777,7 +856,18 @@
     state.diagram.commit(d => {
       d.model.set(state.selectedPart.data, 'animated', isAnim);
     }, 'toggleLinkAnimation');
+    updateFlowAnimation();
     showToast(isAnim ? 'Animasi air/cahaya aktif.' : 'Animasi garis dinonaktifkan.', 'info');
+  });
+
+  // Simpan pilihan bentuk garis pada model agar ikut tersimpan di file project.
+  el.linkRouteStyle.addEventListener('change', function () {
+    if (!state.selectedPart || !(state.selectedPart instanceof go.Link)) return;
+    const link = state.selectedPart;
+    state.diagram.commit(d => {
+      d.model.set(link.data, 'routeStyle', el.linkRouteStyle.value);
+    }, 'changeLinkRouteStyle');
+    showToast('Bentuk garis diperbarui.', 'info');
   });
 
   // Delete Link Button
@@ -787,6 +877,7 @@
       d.remove(state.selectedPart);
     }, 'deleteLink');
     hideInspectors();
+    updateFlowAnimation();
     showToast('Garis penghubung dihapus.', 'info');
   });
 
@@ -798,6 +889,15 @@
   // Add Shape (+)
   el.btnAddShape.addEventListener('click', function () {
     if (!state.diagram) return;
+
+    if (!state.currentProject) {
+      state.currentProject = {
+        filename: null,
+        project_name: (el.inputProjectName && el.inputProjectName.value.trim()) || 'Project Workflow'
+      };
+      if (el.inputProjectName) el.inputProjectName.value = state.currentProject.project_name;
+      if (el.saveStatusText) el.saveStatusText.textContent = 'Ada perubahan belum disimpan';
+    }
 
     // Hitung posisi offset yang rapi
     const count = state.diagram.nodes.count;
@@ -905,21 +1005,10 @@
       const data = await res.json();
       if (data.success && Array.isArray(data.projects)) {
         renderProjectList(data.projects);
-        // Jika belum ada project aktif dan ada project tersimpan, buka project pertama
-        if (!state.currentProject && data.projects.length > 0) {
-          openProject(data.projects[0].filename);
-        } else if (!state.currentProject && data.projects.length === 0) {
-          // Buat starter project pertama kali
-          createNewProject('Workflow Project Baru');
-        }
       }
     } catch (err) {
       console.warn('Gagal memuat list project via API, menggunakan data lokal:', err);
-      // Fallback lokal
       renderProjectList([]);
-      if (!state.currentProject) {
-        initDefaultWorkflow('Workflow Project Baru');
-      }
     }
   }
 
@@ -983,42 +1072,75 @@
 
       state.isModified = false;
       loadProjectList(); // refresh active class
+      updateFlowAnimation();
+      showToast(`Project "${projectData.project_name}" dimuat.`, 'info');
     } catch (err) {
       showToast('Gagal memuat project: ' + err.message, 'error');
     }
   }
 
-  // Create Project Button
-  el.btnCreateProject.addEventListener('click', function () {
-    el.inputNewProjectTitle.value = `Project Workflow ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
-    el.modalNewProject.show();
+  // Toggle Popover Form Tambah Project Baru
+  if (el.btnCreateProject) {
+    el.btnCreateProject.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!el.popoverCreateProject) return;
+      const willOpen = el.popoverCreateProject.hidden;
+      el.popoverCreateProject.hidden = !willOpen;
+      if (willOpen) {
+        if (el.inputPopoverProjectName) {
+          el.inputPopoverProjectName.value = `Project Workflow ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+          setTimeout(() => el.inputPopoverProjectName.focus(), 60);
+        }
+      }
+    });
+  }
+
+  // Hilangkan form tambah project saat user klik di luar form
+  document.addEventListener('click', function (e) {
+    if (el.popoverCreateProject && !el.popoverCreateProject.hidden) {
+      if (!el.popoverCreateProject.contains(e.target) && (!el.btnCreateProject || !el.btnCreateProject.contains(e.target))) {
+        el.popoverCreateProject.hidden = true;
+      }
+    }
+
+    if (el.userProfileMenu && !el.userProfileMenu.hidden && !el.userMenuButton.contains(e.target)) {
+      hideProfileMenu();
+    }
   });
 
-  el.formNewProject.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const title = el.inputNewProjectTitle.value.trim() || 'Workflow Baru';
-    el.modalNewProject.hide();
-    createNewProject(title);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (el.popoverCreateProject) el.popoverCreateProject.hidden = true;
+      hideProfileMenu();
+    }
   });
+
+  if (el.btnCloseCreatePopover) {
+    el.btnCloseCreatePopover.addEventListener('click', function () {
+      el.popoverCreateProject.hidden = true;
+    });
+  }
+
+  if (el.btnCancelCreatePopover) {
+    el.btnCancelCreatePopover.addEventListener('click', function () {
+      el.popoverCreateProject.hidden = true;
+    });
+  }
+
+  if (el.formCreateProjectPopover) {
+    el.formCreateProjectPopover.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const title = el.inputPopoverProjectName.value.trim() || 'Workflow Baru';
+      el.popoverCreateProject.hidden = true;
+      createNewProject(title);
+    });
+  }
 
   async function createNewProject(projectName) {
-    // Buat starter workflow awal yang menarik
-    const starterNodes = [
-      { key: 1, title: 'Data Input', subtitle: 'Menunggu data', color: '#22C55E', icon: '📥', loc: '120 160' },
-      { key: 2, title: 'Processing', subtitle: 'Siap diproses', color: '#EF4444', icon: '⚙️', loc: '360 160' },
-      { key: 3, title: 'API Service', subtitle: 'Terhubung', color: '#3B82F6', icon: '🔌', loc: '600 160' },
-      { key: 4, title: 'Database', subtitle: 'Siap menerima', color: '#000000', icon: '🗄️', loc: '840 160' }
-    ];
-
-    const starterLinks = [
-      { from: 1, to: 2, animated: true, color: '#22C55E' },
-      { from: 2, to: 3, animated: true, color: '#EF4444' },
-      { from: 3, to: 4, animated: true, color: '#3B82F6' }
-    ];
-
+    // Buat lembar kerja baru kosong
     state.diagram.model = new go.GraphLinksModel({
-      nodeDataArray: starterNodes,
-      linkDataArray: starterLinks
+      nodeDataArray: [],
+      linkDataArray: []
     });
 
     state.currentProject = {
@@ -1026,11 +1148,12 @@
       project_name: projectName
     };
     el.inputProjectName.value = projectName;
+    el.saveStatusText.textContent = 'Project baru dibuat';
 
     // Simpan langsung ke backend
     await saveCurrentProject(false);
     await loadProjectList();
-    showToast(`Project "${projectName}" siap digunakan.`, 'success');
+    showToast(`Project "${projectName}" berhasil dibuat. Silakan tambahkan shape.`, 'success');
   }
 
   function initDefaultWorkflow(projectName) {

@@ -334,40 +334,102 @@ html, body {
 }
 
 /* User Profile Dropdown Button & Avatar */
+.user-dropdown-wrapper {
+  position: relative;
+}
+
 .user-profile-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: transparent;
-  border: 1.5px solid transparent;
-  padding: 4px 10px 4px 4px;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  padding: 4px 12px 4px 6px;
   border-radius: 30px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
 }
 
 .user-profile-btn:hover,
 .user-profile-btn:focus {
   background-color: var(--gray-100);
-  border-color: var(--border-subtle);
+  border-color: var(--border-main);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="dark"] .user-profile-btn:hover {
   background-color: var(--gray-800);
+  border-color: var(--border-main);
 }
 
 .user-avatar-img {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--border-main);
 }
 
 .user-display-name {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-main);
+}
+
+/* Custom Dropdown Menu Styling */
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 64px;
+  left: auto;
+  display: block;
+  width: 216px;
+  background-color: var(--bg-card);
+  border: 1.5px solid var(--border-main);
+  border-radius: 12px;
+  box-shadow: var(--shadow-floating);
+  padding: 6px;
+  margin: 0;
+  z-index: 1050;
+  animation: fadeInDown 0.15s ease-out;
+  list-style: none;
+}
+
+.custom-dropdown-menu[hidden] { display: none !important; }
+
+.custom-dropdown-menu .dropdown-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.custom-dropdown-menu .dropdown-item:hover,
+.custom-dropdown-menu .dropdown-item:focus {
+  background-color: var(--primary-accent);
+  color: #000000;
+  font-weight: 600;
+}
+
+.custom-dropdown-menu .dropdown-item i {
+  font-size: 1.1rem;
+}
+
+.custom-dropdown-menu .dropdown-divider {
+  border-color: var(--border-subtle);
+  margin: 5px 0;
+  opacity: 1;
+}
+
+.custom-dropdown-menu .dropdown-item.text-danger:hover {
+  background-color: #FEE2E2;
+  color: #DC2626 !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -417,6 +479,62 @@ html, body {
 .btn-create-project:hover {
   background-color: #F2C200;
   transform: translateY(-1px);
+}
+
+/* Floating Popover Form Tambah Project Baru */
+.popover-create-project {
+  position: absolute;
+  top: 72px;
+  left: 14px;
+  right: 14px;
+  background-color: var(--bg-card);
+  border: 1.5px solid var(--border-main);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+.popover-create-project[hidden] { display: none !important; }
+
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px solid var(--border-subtle);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-close-popover {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.btn-close-popover:hover {
+  color: var(--text-main);
+}
+
+.btn-secondary-custom {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-secondary-custom:hover {
+  background-color: var(--gray-300);
 }
 
 .sidebar-heading {
@@ -663,6 +781,53 @@ html, body {
   transform: translateX(0);
 }
 
+/* Download Menu Dropdown */
+.download-dropdown-menu {
+  position: absolute;
+  right: 58px;
+  top: 0;
+  min-width: 190px;
+  background-color: var(--bg-card);
+  border: 1.5px solid var(--border-main);
+  border-radius: 12px;
+  box-shadow: var(--shadow-floating);
+  padding: 6px;
+  z-index: 1050;
+  list-style: none;
+  animation: fadeInDown 0.15s ease-out;
+}
+
+.download-menu-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  padding: 4px 10px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+}
+
+.download-dropdown-menu .dropdown-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.download-dropdown-menu .dropdown-item:hover {
+  background-color: var(--primary-accent);
+  color: #000000;
+  font-weight: 600;
+}
+
 /* --------------------------------------------------------------------------
    7. Floating Inspector Panels (Node & Link Popovers)
    -------------------------------------------------------------------------- */
@@ -715,6 +880,21 @@ html, body {
   font-size: 0.85rem;
   background: transparent;
   color: var(--text-main);
+}
+
+.inspector-select {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.inspector-select:focus {
+  outline: none;
+  border-color: var(--border-main);
 }
 
 .inspector-input:focus {

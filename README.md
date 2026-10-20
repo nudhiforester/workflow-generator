@@ -41,7 +41,7 @@ flowchart TD
 
     subgraph SidebarLeft [Toolbar Kiri]
         MainPage --> SidebarAction[Sidebar Kiri: List Project & Tombol Create Project]
-        SidebarAction --> CreateProj[Klik Creat Project -> Modal Buat Project Baru]
+        SidebarAction --> CreateProj[Klik Creat Project -> Popover Buat Project]
         CreateProj --> GenerateJsonFile[Generate File JSON Unik: data/json/project/YYYY-MM-DD_HH-mm-ss.json]
         GenerateJsonFile --> UpdateIndex[Catat ke data/json/project/project_by_user.json]
         SidebarAction --> SelectProj[Pilih Project dari List -> Muat ke Canvas]
@@ -54,7 +54,8 @@ flowchart TD
         CanvasAction --> ClickNode[Klik Shape -> Muncul Floating Node Inspector]
         ClickNode --> EditNodeProps[Ubah Title, Subtitle, Warna Border, & Ikon]
         CanvasAction --> ClickLink[Klik Garis -> Muncul Floating Link Inspector]
-        ClickLink --> ToggleAnim[Atur Warna Garis & Toggle Animasi Aliran Air/Cahaya]
+        ClickLink --> ToggleAnim[Atur Warna & Animasi Aliran Garis]
+        ClickLink --> LinkStyle[Pilih bentuk: Elbowed, Curved, atau Straight]
     end
 
     subgraph ToolbarRight [Toolbar Kanan & Aksi Ekspor]
@@ -89,13 +90,14 @@ flowchart TD
 ### 2. Workspace & Header Utama (Main Page)
 - **Top Header Bar:** Latar putih bersih berbatas hitam tipis, memuat ikon logo pohon cemara (*pine tree*), teks judul **Workflow Generator**, tombol *toggle* tema gelap/terang, serta avatar & nama pengguna.
 - **Dropdown Profil Pengguna:**
+  - Menu tertutup sampai tombol profil diklik, menutup saat klik di luar atau tekan Escape, dan ditempatkan di samping tombol agar tidak menutupi toolbar kanan.
   - *Lihat Profil:* Membuka modal informasi lengkap pengguna (Nama, Email, Kontak, Role).
   - *Edit Profil:* Membuka form perubahan nama, kontak, dan kata sandi.
   - *Logout:* Mengakhiri sesi dan kembali ke tampilan login.
 - **Dark Mode Support:** Mendukung pergantian tema gelap (`#0B1220`) dan terang (`#FFFFFF`) secara mulus dengan penyesuaian kontras teks, node, dan panel.
 
 ### 3. Toolbar Kiri & Manajemen Project
-- **Tombol "Creat Project":** Menambahkan project workflow baru dengan struktur starter template yang rapi.
+- **Tombol "Creat Project":** Membuka popover nama project hanya saat tombol diklik; klik di luar menutupnya. Project baru dimulai dengan lembar kerja kosong.
 - **List Project:** Menampilkan daftar project yang dimiliki user berdasarkan index `data/json/project/project_by_user.json`.
 - **Navigasi Antar Project:** Klik pada item project akan langsung memuat data workflow ke canvas.
 - **Hapus Project:** Tombol hapus pada setiap item project untuk menghapus file JSON dan memperbarui index.
@@ -111,6 +113,7 @@ flowchart TD
   - *Icon* (Modal pilihan berbagai emoji & simbol alur kerja)
   - *Hapus Shape*
 - **Floating Link Inspector:** Panel editor garis penghubung untuk mengubah warna garis dan menyalakan/mematikan animasi aliran air/cahaya.
+- **Bentuk Garis:** Setiap konektor dapat diatur sebagai siku (*Elbowed*), lengkung (*Curved*), atau lurus (*Straight*); pilihan disimpan bersama data konektor.
 
 ### 5. Toolbar Kanan & Ekspor
 - **Add Shape (+):** Menambahkan node baru secara instan pada posisi teratur.
@@ -243,6 +246,21 @@ workflow-generator/
 ---
 
 ## 📝 Catatan Rilis & Changelog
+
+### Versi 1.0.3 (Workspace, Canvas & UX Improvements)
+- **Tampilan Lembar Kerja Awal Kosong:** Saat berhasil login, canvas dimulai dalam keadaan bersih dan kosong tanpa langsung memuat shape atau project lama.
+- **Navigasi Project di Sidebar Kiri:** Menampilkan daftar project yang pernah dibuat dari index `project_by_user.json`, dapat diklik untuk memuat alur kerja ke canvas.
+- **Popover "Creat Project" Dismissible:** Form tambah project baru hanya muncul saat tombol "Creat Project" diklik, dan otomatis tertutup jika pengguna mengklik area luar.
+- **Perbaikan Dropdown Profil & Download:** Merapikan tampilan menu dropdown profil pengguna dan menu ekspor download dengan border tegas, sudut membulat, dan elevasi bayangan halus sesuai `stylerules.md`.
+- **Perbaikan Drag-and-Drop Shape:** Mengubah konfigurasi node template GoJS (`fromLinkable: false, movable: true`) sehingga shape dapat dengan mudah digeser dan dipindahkan posisinya di canvas.
+- **Titik Koneksi Garis (Ports) Terlihat Jelas:** Menyediakan 4 titik port lingkaran tegas pada sisi atas, kanan, bawah, dan kiri masing-masing shape lengkap dengan efek sorotan hover untuk mempermudah penarikan garis antarnode.
+- **Animasi Aliran Cahaya/Air Berkelanjutan:** Menggunakan loop `go.Animation` dengan interpolasi `strokeDashOffset` berulang agar efek cahaya bergerak mengalir dinamis dan tidak berhenti menjadi garis putus-putus statis.
+- **Auto-Dismiss Form Inspector Shape:** Panel editor detail shape otomatis tertutup dan deselect node saat pengguna selesai mengklik tombol simpan ("Save") atau mengklik area kosong canvas.
+
+### Versi 1.0.4 (Project Menu & Link Styles)
+- **Popover Project Tegas:** Popover memakai status `hidden` dan hanya dibuka dari tombol buat project; klik area luar, tombol tutup, dan batal menutupnya.
+- **Dropdown Profil Terkendali:** Menu dibuka oleh tombol profil, ditutup saat klik di luar atau Escape, dan diposisikan di samping profil agar tidak menutup toolbar canvas.
+- **Pilihan Routing Konektor:** Link inspector menawarkan Elbowed, Curved, dan Straight. Preferensi `routeStyle` ikut disimpan pada model GoJS.
 
 ### Versi 1.0.1 (Patch & Login Stability)
 - **Perbaikan Inisialisasi Template GoJS:** Menghapus properti `spacing` yang tidak didukung pada `go.Panel(Vertical)` di [assets/js/main.js](file:///c:/wamp64/www/workflow-generator/assets/js/main.js) yang sebelumnya menyebabkan eksepsi runtime saat transisi ke workspace.

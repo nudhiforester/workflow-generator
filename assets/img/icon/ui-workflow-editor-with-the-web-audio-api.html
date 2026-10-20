@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI Workflow Editor with the Web Audio API</title>
+  <script src="https://cdn.jsdelivr.net/npm/gojs@latest"></script>
+  
+  
+  
+  <style>
+#myDiagramDiv, #myPaletteDiv { background: #0b132b; border: solid 1px #2b3446; border-radius: 8px; }
+  #myDiagramDiv > div::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  #myDiagramDiv > div { scrollbar-width: none; -ms-overflow-style: none; }
+  .audio-stage { display: flex; flex-direction: row; gap: 10px; height: 650px; }
+  #myPaletteDiv { min-width: 160px; min-height: 180px; }
+  #myDiagramDiv { flex: 1; }
+  @media (width < 768px) {
+    .audio-stage { flex-direction: column; }
+    #myPaletteDiv { min-width: 0; height: 150px; }
+  }
+  .audio-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.25em;
+    margin-block: 1em;
+  }
+  .audio-toolbar label { display: flex; align-items: center; gap: 0.5em; }
+  button, #includeTail { cursor: pointer }
+  #playButton {
+    padding: 7px 16px;
+    font: bold 13px sans-serif;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #playButton { min-width: 96px; color: #10171f; background: #66bb6a; border: none; }
+  #playButton.playing { background: #ef5350; color: #fff; }
+  #mySavedModel {
+    width: 100%;
+    height: 180px;
+    resize: vertical;
+  }
+  #masterVolume { 
+    accent-color: #4cc9f0; 
+    cursor: pointer;
+  }
+  </style>
+</head>
+<body>
+<div class="audio-stage">
+    <div id="myPaletteDiv"></div>
+    <div id="myDiagramDiv"></div>
+  </div>
+  <div class="audio-toolbar">
+    <button id="playButton" onclick="togglePlay()">▶ Play</button>
+    <label>
+      Master
+      <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="0.5" oninput="setMasterVolume(this.value)" />
+      <span id="masterValue">60%</span>
+    </label>
+    <button onclick="save()">Save</button>
+    <button onclick="load()">Load</button>
+    <button onclick="bounce()">Bounce to WAV</button>
+    <label>
+      <input id="includeTail" type="checkbox" checked />
+      Include tail
+    </label>
+    <span class="hint">Drag a node from the palette, wire an output port (right) into an input port (left), and press Play to hear the output. Click a node's glyph to collapse it.</span>
+  </div>
+  <textarea id="mySavedModel" spellcheck="false">
+{ "class": "GraphLinksModel",
+  "linkFromPortIdProperty": "fromPort",
+  "linkToPortIdProperty": "toPort",
+  "nodeDataArray": [
+{"key":"grpEqComp","isGroup":true,"text":"EQ + Compression"},
+{"key":"grpDoubler","isGroup":true,"text":"Doubler"},
+{"key":"grpDelayVerb","isGroup":true,"text":"Delay + Reverb"},
+{"key":-2,"category":"sample","fileName":"","loop":true,"level":0.8,"pitch":0,"loc":"-400 0"},
+{"key":-5,"category":"eq","band1freq":180,"band1q":1,"band1gain":1,"band2freq":1250,"band2q":2,"band2gain":-1,"band3freq":3500,"band3q":85,"band3gain":1,"group":"grpEqComp","loc":"-200 0"},
+{"key":-9,"category":"compressor","threshold":-30,"knee":30,"ratio":4.5,"attack":0.015,"release":0.050,"bypassed":false,"group":"grpEqComp","loc":"0 0"},
+{"key":-6,"category":"panner","pan":-1,"group":"grpDoubler","loc":"230 -100"},
+{"key":-8,"category":"delay","time":0.02,"feedback":0.2,"wet":1,"dry":0,"group":"grpDoubler","loc":"230 100"},
+{"key":-7,"category":"panner","pan":1,"group":"grpDoubler","loc":"430 100"},
+{"key":-3,"category":"delay","time":0.15,"feedback":0.35,"wet":0.25,"dry":1,"group":"grpDelayVerb","loc":"650 0"},
+{"key":-4,"category":"reverb","wet":0.35,"dry":1,"group":"grpDelayVerb","loc":"850 0"},
+{"key":"out","category":"output","loc":"1050 0"}
+],
+  "linkDataArray": [
+{"from":-2,"to":-5,"fromPort":"out","toPort":"in"},
+{"from":-5,"to":-9,"fromPort":"out","toPort":"in"},
+{"from":-9,"to":-6,"fromPort":"out","toPort":"in"},
+{"from":-9,"to":-8,"fromPort":"out","toPort":"in"},
+{"from":-8,"to":-7,"fromPort":"out","toPort":"in"},
+{"from":-6,"to":-3,"fromPort":"out","toPort":"in"},
+{"from":-7,"to":-3,"fromPort":"out","toPort":"in"},
+{"from":-3,"to":-4,"fromPort":"out","toPort":"in"},
+{"from":-4,"to":"out","fromPort":"out","toPort":"in"}
+]}
+  </textarea>
+  <div id="description">
+<p>
+    This sample demonstrates a UI workflow style editor built on top of the
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API" target="_blank">Web Audio API</a>
+    that gives a user the ability to design and edit processes with this API without writing any code.
+    Each GoJS node represents a Web Audio <code>AudioNode</code> and each Link represents a call to <code>AudioNode.connect()</code>.
+    Drag various node types from the <a href="../api/symbols/Palette.html" target="api">Palette</a> and link them using the <a href="../api/symbols/LinkingTool.html" target="api">LinkingTool</a> to edit the audio graph.
+    Click on a Link and drag its ends to invoke the <a href="../api/symbols/RelinkingTool.html" target="api">RelinkingTool</a> and relink existing links.
+    A Model <a href="../api/symbols/ChangedEvent.html" target="api">ChangedEvent</a> listener listens for single nodes being added from the palette and then automatically interlinks
+    them if their ports are placed over the middle of an existing link.
+  </p>
+  <p>
+    Connect either a sample Node or oscillator Nodes to an output Node and press the play button to hear results.
+    Each node can by bypassed with a toggle button on their top right and collapsed by pressing their glyph on the top left. Press <kbd>Ctrl-G</kbd> to invoke
+    <a href="../api/symbols/CommandHandler.html#groupselection" target="api">CommandHandler.groupSelection</a> to create a <a href="../api/symbols/Group.html" target="api">Group</a> of selected nodes, which can then be bypassed and collapsed together.
+    Press the bounce audio "Bounce to WAV" button to bounce an audio file with the processing applied.
+  </p>
+  <p>
+    The <a href="../api/symbols/Diagram.html#model" target="api">Diagram.model</a> is the single source of truth for the Diagram and audio patch. A function called by a listener for structural model changes
+    walks through the model and builds a matching Web Audio graph. Sliders on each node control parameters and live-update them
+    to make changes while audio is playing. Parameters can also be manually changed by an override to the <a href="../api/symbols/TextEditingTool.html" target="api">TextEditingTool</a>.
+    This model is stored and loaded from JSON displayed below the diagram.
+  </p>
+  <p>
+    This sample is meant as a starting point to add custom nodes and properties via a common node-type object and a
+    function to add such nodes to a <a href="../api/symbols/Diagram.html#nodetemplatemap" target="api">Diagram.nodeTemplateMap</a>. It demonstrates how GoJS can be used to visualize workflows
+    and create diagrams that are editable, data-bound, and provide a JSON serializable model usable as a source of truth for other API.
+  </p>
+  </div>
+  <script >
+const PALETTE = {
+    // node accent colors
+    oscColor:    '#ff7043',
+    sampleColor: '#5c6bc0',
+    gainColor:   '#66bb6a',
+    filterColor: '#ab47bc',
+    eqColor: '#f542e6',
+    compColor:   '#ffa726',
+    distortionColor: '#e53935',
+    delayColor:  '#29b6f6',
+    reverbColor: '#f5d142',
+    pannerColor: '#26a69a',
+    outputColor: '#ec407a',
+
+    // surfaces
+    cardBg: '#1c2541',
+    dark:   '#10171f',
+
+    // text
+    textTitle:     '#eceff1',
+    textLabel:     '#90a4ae',
+    textValue:     '#cfd8dc',
+    textChoiceOff: '#b0bec5',
+
+    // interactive
+    accent:  '#4cc9f0',
+    white:   '#ffffff',
+    chipOff: '#37404f',
+
+    // bypass button
+    bypassedFill:   '#2b3446',
+    bypassedStroke: '#5a6573',
+
+    // level meter
+    meterLow:  '#66bb6a',
+    meterMid:  '#ffca28',
+    meterHigh: '#ef5350',
+
+    // groups
+    defaultGroup: '#eceff1'
+  };
+
+  // ---------------------------------------------------------------------------
+  // Node type catalog
+  //
+  // Data that describes every kind of audio node: to add a
+  // new node type, add one entry here AND one matching `case` in both
+  // createAudioNode() and applyParam()
+  //
+  //   category : model category + key into the template/audio maps
+  //   title    : label shown in the node header
+  //   glyph    : short code shown in the colored icon chip
+  //   color    : accent color for the header chip and node border
+  //   hasInput / hasOutput : which audio ports the node exposes
+  //   defaults : initial data object for a freshly dropped node
+  //   controls : array of parameter widgets, in order
+  //   meter    : (optional) 'level' shows a live output signal meter;
+  //              'reduction' shows a compressor's live gain-reduction meter
+  //
+  // A control is one of:
+  //   { type: 'slider',  prop, min, max, label, unit, log?, mult?, decimals?, fmt?, parse? }
+  //   { type: 'choices', prop, options: [{ value, label }, ...] }
+  //   { type: 'file',    prop }  // a "load audio file" button; prop holds the file name
+  // ---------------------------------------------------------------------------
+  const NODE_TYPES = [
+    {
+      category: 'oscillator', title: 'Oscillator', glyph: 'OSC', color: PALETTE.oscColor,
+      hasInput: false, hasOutput: true,
+      defaults: { wave: 'sawtooth', freq: 110, level: 0.5 },
+      controls: [
+        { type: 'choices', prop: 'wave', options: [
+            { value: 'sine', label: 'Sine' }, { value: 'square', label: 'Sqr' },
+            { value: 'sawtooth', label: 'Saw' }, { value: 'triangle', label: 'Tri' } ] },
+        { type: 'slider', prop: 'freq', min: 20, max: 2000, log: true, label: 'Freq', unit: 'Hz' },
+        { type: 'slider', prop: 'level', min: 0, max: 1, label: 'Level', mult: 100, unit: '%' }
+      ]
+    },
+    {
+      category: 'sample', title: 'Sample', glyph: 'SMP', color: PALETTE.sampleColor,
+      hasInput: false, hasOutput: true,
+      defaults: { fileName: '', loop: true, level: 0.8, pitch: 0 },
+      controls: [
+        { type: 'file', prop: 'fileName' },
+        { type: 'choices', prop: 'loop', options: [
+            { value: false, label: 'Once' }, { value: true, label: 'Loop' } ] },
+        { type: 'slider', prop: 'level', min: 0, max: 1, label: 'Level', mult: 100, unit: '%' },
+        { type: 'slider', prop: 'pitch', min: -1200, max: 1200, label: 'Pitch', mult: 0.01,
+          fmt: v => { const st = v / 100; return (st > 0 ? '+' : '') + st.toFixed(1); }, unit: 'st' }
+      ]
+    },
+    {
+      category: 'gain', title: 'Gain', glyph: 'AMP', color: PALETTE.gainColor,
+      hasInput: true, hasOutput: true,
+      defaults: { gain: 0.6 },
+      controls: [
+        { type: 'slider', prop: 'gain', min: 0, max: 1.5, label: 'Gain', decimals: 2, unit: 'x' }
+      ]
+    },
+    {
+      category: 'filter', title: 'Filter', glyph: 'FLT', color: PALETTE.filterColor,
+      hasInput: true, hasOutput: true,
+      defaults: { filterType: 'lowpass', freq: 800, q: 1 },
+      controls: [
+        { type: 'choices', prop: 'filterType', options: [
+            { value: 'lowpass', label: 'LP' }, { value: 'highpass', label: 'HP' }, { value: 'bandpass', label: 'BP' } ] },
+        { type: 'slider', prop: 'freq', min: 40, max: 12000, log: true, label: 'Cutoff', unit: 'Hz' },
+        { type: 'slider', prop: 'q', min: 0.1, max: 20, label: 'Q', decimals: 1, unit: '' }
+      ]
+    },
+    {
+      category: 'eq', title: '3 Band EQ', glyph: 'EQ', color: PALETTE.eqColor,
+      hasInput: true, hasOutput: true,
+      defaults: { band1freq: 300, band1q: 1, band1gain: 0, band2freq: 800, band2q: 1, band2gain: 0, band3freq: 2000, band3q: 1, band3gain: 0 },
+      controls: [
+        { type: 'slider', prop: 'band1freq', min: 40, max: 12000, log: true, label: 'Band 1 Freq', unit: 'Hz' },
+        { type: 'slider', prop: 'band1q', min: .1, max: 20, label: 'Band 1 Q', decimals: 1, unit: '' },
+        { type: 'slider', prop: 'band1gain', min: -20, max: 20, label: 'Band 1 Gain', decimals: 1, unit: 'db' },
+        { type: 'slider', prop: 'band2freq', min: 40, max: 12000, log: true, label: 'Band 2 Freq', unit: 'Hz' },
+        { type: 'slider', prop: 'band2q', min: .1, max: 20, label: 'Band 2 Q', decimals: 1, unit: '' },
+        { type: 'slider', prop: 'band2gain', min: -20, max: 20, label: 'Band 2 Gain', decimals: 1, unit: 'db' },
+        { type: 'slider', prop: 'band3freq', min: 40, max: 12000, log: true, label: 'Band 3 Freq', unit: 'Hz' },
+        { type: 'slider', prop: 'band3q', min: .1, max: 20, label: 'Band 3 Q', decimals: 1, unit: '' },
+        { type: 'slider', prop: 'band3gain', min: -20, max: 20, label: 'Band 3 Gain', decimals: 1, unit: 'db' }
+      ]
+    },
+    {
+      category: 'compressor', title: 'Compressor', glyph: 'CMP', color: PALETTE.compColor,
+      hasInput: true, hasOutput: true,
+      defaults: { threshold: -24, knee: 30, ratio: 4, attack: 0.015, release: 0.050 },
+      controls: [
+        { type: 'slider', prop: 'threshold', min: -100, max: 0, label: 'Threshold', unit: 'dB' },
+        { type: 'slider', prop: 'knee', min: 0, max: 40, label: 'Knee', unit: 'dB' },
+        { type: 'slider', prop: 'ratio', min: 1, max: 20, label: 'Ratio', decimals: 1, unit: ':1' },
+        { type: 'slider', prop: 'attack', min: 0, max: .5, label: 'Attack', mult: 1000, unit: 'ms' },
+        { type: 'slider', prop: 'release', min: 0, max: .5, label: 'Release', mult: 1000, unit: 'ms' }
+      ],
+      meter: 'reduction'
+    },
+    {
+      category: 'distortion', title: 'Distortion', glyph: 'DST', color: PALETTE.distortionColor,
+      hasInput: true, hasOutput: true,
+      defaults: { mode: 'soft', drive: 8 },
+      controls: [
+        { type: 'choices', prop: 'mode', options: [
+            { value: 'soft', label: 'Soft' }, { value: 'hard', label: 'Hard' } ] },
+        { type: 'slider', prop: 'drive', min: 0, max: 50, label: 'Drive', unit: '' }
+      ]
+    },
+    {
+      category: 'delay', title: 'Delay', glyph: 'DLY', color: PALETTE.delayColor,
+      hasInput: true, hasOutput: true,
+      defaults: { time: 0.25, feedback: 0.35, wet: .4, dry: 1 },
+      controls: [
+        { type: 'slider', prop: 'time', min: 0, max: 1, label: 'Time', mult: 1000, unit: 'ms' },
+        { type: 'slider', prop: 'feedback', min: 0, max: 0.9, label: 'Feedback', mult: 100, unit: '%' },
+        { type: 'slider', prop: 'wet', min: 0, max: 1, label: 'Wet', mult: 100, unit: '%' },
+        { type: 'slider', prop: 'dry', min: 0, max: 1, label: 'Dry', mult: 100, unit: '%' }
+      ]
+    },
+    {
+      category: 'reverb', title: 'Reverb', glyph: 'RVB', 'color': PALETTE.reverbColor,
+      hasInput: true, hasOutput: true,
+      defaults: { wet: .4, dry: .8 },
+      controls: [
+        { type: 'slider', prop: 'wet', min: 0, max: 1, label: 'Wet', mult: 100, unit: '%' },
+        { type: 'slider', prop: 'dry', min: 0, max: 1, label: 'Dry', mult: 100, unit: '%' }
+      ]
+    },
+    {
+      category: 'panner', title: 'Panner', glyph: 'PAN', color: PALETTE.pannerColor,
+      hasInput: true, hasOutput: true,
+      defaults: { pan: 0 },
+      controls: [
+        { type: 'slider', prop: 'pan', min: -1, max: 1, label: 'Pan',
+          fmt: v => v === 0 ? 'C' : (v < 0 ? Math.round(-v*100)+'L' : Math.round(v*100)+'R'),
+          parse: t => { t = t.trim().toUpperCase(); if (t === 'C' || t === '') return 0; const n = parseFloat(t) / 100; return t.endsWith('L') ? -n : n; }, unit: '' }
+      ]
+    },
+    {
+      category: 'output', title: 'Output', glyph: 'OUT', color: PALETTE.outputColor,
+      hasInput: true, hasOutput: false,
+      defaults: {},
+      controls: [],
+      meter: 'level'
+    }
+  ];
+
+  // constants for sliders
+  const SLIDER_W = 134;     // min-width for control rows
+  const THUMB = 13;         // slider thumb geometry diameter
+  const THUMB_STROKE = 2;   // its stroke (1px per side)
+  const THUMB_FULL = THUMB + THUMB_STROKE; // full visual diameter
+
+  // small numeric helpers for the sliders
+  // clamp between 0 or 1
+  function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  // map a value in [min,max] to a 0..1 fraction (optionally on a log scale)
+  function valToFrac(v, min, max, log) {
+    return log ? Math.log(v / min) / Math.log(max / min) : (v - min) / (max - min);
+  }
+  // map a 0..1 fraction back to a value in [min,max]
+  function fracToVal(f, min, max, log) {
+    return log ? min * Math.pow(max / min, f) : min + (max - min) * f;
+  }
+  // stored value -> display string (display = stored * mult)
+  function fmtVal(c, v) {
+    if (c.fmt) return c.fmt(v);
+    return (v * (c.mult || 1)).toFixed(c.decimals || 0);
+  }
+  // display string -> stored value
+  function parseVal(c, t) {
+    if (c.parse) return c.parse(t);
+    return parseFloat(t) / (c.mult || 1);
+  }
+
+  function init() {
+    myDiagram = new go.Diagram('myDiagramDiv', {
+      'undoManager.isEnabled': true,
+      'animationManager.isEnabled': false,
+      initialAutoScale: go.AutoScale.Uniform,
+      scrollMargin: 300
+    });
+
+    // a dotted background grid
+    myDiagram.grid =
+      new go.Panel('Grid', { visible: true, gridCellSize: new go.Size(22, 22) })
+        .add(
+          new go.Shape('LineH', {
+            stroke: '#283446', strokeWidth: 2,
+            strokeDashArray: [0, 20, 2, 0]
+          })
+        );
+
+    // after a meter parameter is edited, apply the parameter to update the audio graph
+    const TETool = myDiagram.toolManager.textEditingTool;
+    TETool.acceptText = function (reason) {
+      go.TextEditingTool.prototype.acceptText.call(this, reason);
+      const tb = this.textBlock;
+      if (!tb || !tb.name) return;
+      const node = tb.part;
+      if (!(node instanceof go.Node)) return;
+      applyParam(node.data, tb.name);
+    };
+
+    // node templates: one per category, all built from NODE_TYPES
+    const nodeMap = new go.Map();
+    NODE_TYPES.forEach(cfg => nodeMap.add(cfg.category, makeNodeTemplate(cfg)));
+    myDiagram.nodeTemplateMap = nodeMap;
+
+    // allows commandHandler to make groups
+    myDiagram.commandHandler.archetypeGroupData = { isGroup: true, text: 'New Group' };
+    // group template
+    myDiagram.groupTemplate =
+      new go.Group('Vertical', { ungroupable: true, selectionAdorned: false, locationObjectName: 'HEADER' }) // Allows ungrouping
+        .bindTwoWay('isSubGraphExpanded')
+        .add(
+          new go.Panel('Auto', { margin: new go.Margin(0, 0, 10, 0), alignment: go.Spot.Center, name: 'HEADER' })
+            .add(
+              new go.Shape('RoundedRectangle', {
+                fill: 'rgba(0,0,0,0.08)',
+                stroke: PALETTE.defaultGroup + 'A0',
+                parameter1: 8
+              })
+                .bindObject('fill', 'isSelected', v => v ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)')
+                .bindObject('stroke', 'isSelected', v => v ? PALETTE.accent : PALETTE.defaultGroup + 'BB'),
+              new go.Panel('Horizontal', { alignment: go.Spot.Left, margin: new go.Margin(4, 8) })
+                .add(
+                  makeGroupCollapseButton(),
+                  new go.TextBlock({
+                    font: 'bold 13px sans-serif',
+                    stroke: PALETTE.defaultGroup,
+                    editable: true
+                  })
+                    .bindTwoWay("text"),
+                  new go.Panel('Auto', {
+                    cursor: 'pointer', margin: new go.Margin(0, 0, 0, 8),
+                    click: (e, obj) => toggleGroupBypass(obj.part)
+                  })
+                    .add(
+                      new go.Shape('Circle', { width: 11, height: 11, strokeWidth: 2, fill: PALETTE.defaultGroup, stroke: PALETTE.defaultGroup })
+                        .bind('fill', 'bypassed', b => (b ? PALETTE.bypassedFill : PALETTE.defaultGroup))
+                        .bind('stroke', 'bypassed', b => (b ? PALETTE.bypassedStroke : PALETTE.defaultGroup))
+                    )
+                ),
+            ),
+          new go.Panel('Auto')
+            .bind('visible', 'isSubGraphExpanded')
+            .add(
+              new go.Shape('RoundedRectangle', {
+                fill: 'rgba(0,0,0,0.08)',
+                stroke: PALETTE.defaultGroup,
+                strokeWidth: 1,
+                strokeDashArray: [4, 3],
+                parameter1: 8
+              })
+                .bindObject('fill', 'isSelected', v => v ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)')
+                .bindObject('stroke', 'isSelected', v => v ? PALETTE.accent : PALETTE.defaultGroup + '90'),
+              new go.Placeholder({ padding: 10 })
+            )
+        );
+
+    // the cable between an output port and an input port
+    myDiagram.linkTemplate =
+      new go.Link({
+        routing: go.Routing.Normal,
+        curve: go.Curve.Bezier,
+        fromPortId: 'out',
+        toPortId: 'in',
+        fromSpot: go.Spot.Right,
+        toSpot: go.Spot.Left,
+        fromEndSegmentLength: 30,
+        toEndSegmentLength: 30,
+        relinkableFrom: true,
+        relinkableTo: true,
+        selectionAdorned: false,
+        layerName: 'Background'
+      })
+        .add(
+          new go.Shape({ strokeWidth: 3.5, stroke: PALETTE.accent, strokeCap: 'round' })
+            .bindObject('stroke', 'isSelected', s => (s ? PALETTE.white : PALETTE.accent))
+        );
+
+    // linking rules: drag from an output, no self-links, no duplicates
+    const ltool = myDiagram.toolManager.linkingTool;
+    ltool.direction = go.LinkingDirection.ForwardsOnly;
+    ltool.linkValidation = validLink; // custom function for evaluating link drawing
+    ltool.temporaryLink =
+      new go.Link({ layerName: 'Tool' })
+        .add(new go.Shape({ stroke: PALETTE.accent, strokeWidth: 3.5, strokeCap: 'round' }));
+    myDiagram.toolManager.relinkingTool.linkValidation = validLink;
+
+    // Schedule a rebuild of the audio graph whenever the wiring changes (a node or link added/removed/relinked)
+    // Slider tweaks update the live graph directly and do NOT trigger a rebuild
+    myDiagram.addModelChangedListener(e => {
+      if (!isPlaying || !e.isTransactionFinished) return;
+      const txn = e.object;
+      if (!(txn instanceof go.Transaction)) return;
+      let structural = false;
+      txn.changes.each(c => {
+        if (['nodeDataArray', 'linkDataArray', 'linkFromKey', 'linkToKey',
+             'linkFromPortId', 'linkToPortId'].includes(c.modelChange)) structural = true;
+      });
+      if (structural) scheduleRebuild();
+    });
+
+    // Automatically link new nodes dragged on top of existing links such that it should sit between them
+    myDiagram.addModelChangedListener(e => {
+      if (!e.isTransactionFinished) return;
+      const txn = e.object;
+      if (!(txn instanceof go.Transaction)) return;
+      const added = [];
+      txn.changes.each(c => {
+        if (c.change === go.ChangeType.Insert && c.modelChange === 'nodeDataArray') added.push(c.newValue);
+      });
+      if (added.length !== 1) return; // only for singly-added nodes
+      const data = added[0];
+      setTimeout(() => {
+        const node = myDiagram.findNodeForData(data);
+        if (!node || node.findPort('in') === node || node.findPort('out') === node) return; // require input and output
+        const ip = node.findPort('in').getDocumentPoint(go.Spot.Center);
+        const op = node.findPort('out').getDocumentPoint(go.Spot.Center);
+        const H = 40; // fixed-height rectangle spanning the node's ports
+        const bounds = new go.Rect(Math.min(ip.x, op.x), (ip.y + op.y) / 2 - H / 2, Math.abs(op.x - ip.x), H);
+        const c = bounds.center;
+        let best = null, bestD = Infinity; // find closest distance link
+        myDiagram.links.each(l => {
+          if (!l.fromNode || !l.toNode || l.fromNode === node || l.toNode === node) return;
+          const a = l.getPoint(0), z = l.getPoint(l.pointsCount - 1);
+          const len2 = (z.x - a.x) ** 2 + (z.y - a.y) ** 2;
+          const t = len2 ? ((c.x - a.x) * (z.x - a.x) + (c.y - a.y) * (z.y - a.y)) / len2 : -1;
+          if (t < 0.25 || t > 0.75) return; // must substantially cross the middle of the link
+          const p = new go.Point(a.x + t * (z.x - a.x), a.y + t * (z.y - a.y));
+          const d = c.distanceSquaredPoint(p);
+          if (bounds.containsPoint(p) && d < bestD) { bestD = d; best = l; }
+        });
+        if (!best) return;
+        const dest = best.toNode.data.key, toPort = best.data.toPort;
+        myDiagram.model.commit(m => {
+          m.setToKeyForLinkData(best.data, data.key);                           // src -> new
+          m.addLinkData({ from: data.key, to: dest, fromPort: 'out', toPort }); // new -> dest
+        }, 'splice node into link');
+      });
+    });
+
+    // Each slider's FILL width is a fraction of its node's actual (stretched)
+    // width, which isn't known until the node is measured. Re-evaluate those
+    // bindings once the initial layout is done and after any palette drop.
+    myDiagram.addDiagramListener('InitialLayoutCompleted', e => e.diagram.updateAllTargetBindings());
+    myDiagram.addDiagramListener('ExternalObjectsDropped', e => e.diagram.updateAllTargetBindings());
+
+    // the palette of draggable node types
+    myPalette = new go.Palette('myPaletteDiv', { 'animationManager.isEnabled': false });
+    const paletteMap = new go.Map();
+    NODE_TYPES.forEach(cfg => paletteMap.add(cfg.category, makePaletteTemplate(cfg)));
+    myPalette.nodeTemplateMap = paletteMap;
+    myPalette.model = new go.GraphLinksModel(
+      NODE_TYPES.map(cfg => Object.assign({ category: cfg.category }, cfg.defaults))
+    );
+
+    // the model
+    myDiagram.model = new go.GraphLinksModel({
+      linkFromPortIdProperty: 'fromPort',
+      linkToPortIdProperty: 'toPort',
+      nodeDataArray: [],
+      linkDataArray: []
+    });
+
+    loadDefaultSample(); // preload the Sample node's default clip
+    preloadReverbIR();   // preload the shared reverb impulse response
+    setMasterVolume(document.getElementById('masterVolume').value);
+    load();
+  } // end init
+
+  // a connection is valid if it joins two different nodes and isn't a duplicate
+  function validLink(fromnode, fromport, tonode, toport) {
+    if (!fromnode || !tonode || fromnode === tonode) return false;
+    let dup = false;
+    fromnode.findLinksOutOf().each(l => { if (l.toNode === tonode) dup = true; });
+    return !dup;
+  }
+
+  // ===========================================================================
+  // GoJS node template, generated from a NODE_TYPES entry
+  // ===========================================================================
+  function makeNodeTemplate(cfg) {
+    const node =
+      new go.Node('Spot', {
+        locationSpot: go.Spot.Center,
+        selectionAdorned: false
+      })
+        .bindTwoWay('location', 'loc', go.Point.parse, go.Point.stringify)
+        .add(buildBody(cfg));
+
+    if (cfg.hasInput) node.add(makePort('in', false, cfg));
+    if (cfg.hasOutput) node.add(makePort('out', true, cfg));
+    return node;
+  }
+
+  // creates the structure of the card node
+  function buildBody(cfg) {
+    const body = // holds the main contents
+      new go.Panel('Vertical', { stretch: go.Stretch.Horizontal, defaultAlignment: go.Spot.Left })
+        .bind('visible', 'collapsed', c => !c);
+
+    cfg.controls.forEach(c => body.add(makeControl(c))); // adds control rows
+    if (cfg.meter) body.add(makeMeter(cfg)); // adds a level/reduction meter if required
+
+    const container = // holds the header and body content
+      new go.Panel('Vertical', { margin: 12, defaultAlignment: go.Spot.Left, minSize: new go.Size(SLIDER_W, NaN) })
+        .add(makeHeader(cfg), body);
+
+    return new go.Panel('Auto') // wrap the node in an auto panel
+      .bind('opacity', 'bypassed', b => (b ? 0.5 : 1)) // dim the whole card while bypassed
+      .add(
+        new go.Shape('RoundedRectangle', { parameter1: 8, fill: PALETTE.cardBg, strokeWidth: 1.5 })
+          .bindObject('stroke', 'isSelected', s => (s ? PALETTE.white : cfg.color)),
+        container
+      );
+  }
+
+  // creates the title header for each node with
+  function makeHeader(cfg) {
+    const title = new go.Panel('Horizontal', { column: 0, alignment: go.Spot.Left, margin: new go.Margin(0, 0, 4, 0) })
+      .add(
+        // clicking the colored glyph chip expands/collapses the node body
+        new go.Panel('Auto', {
+          cursor: 'pointer',
+          click: (e, obj) => toggleCollapse(obj.part),
+          alignment: go.Spot.Left
+        })
+          .add(
+            new go.Shape('RoundedRectangle', { parameter1: 5, fill: cfg.color, strokeWidth: 0 }),
+            new go.TextBlock(cfg.glyph, { stroke: PALETTE.dark, font: 'bold 10px sans-serif', margin: new go.Margin(2, 5, 2, 5) })
+          ),
+        new go.TextBlock(cfg.title, {
+          alignment: go.Spot.Left,
+          stroke: PALETTE.textTitle,
+          font: 'bold 13px sans-serif',
+          margin: new go.Margin(0, 8, 0, 8)
+        })
+      );
+    if (!cfg.hasOutput) return title; // if no output port, don't add a bypass button
+    return new go.Panel('Table', { stretch: go.Stretch.Horizontal })
+      .add(title, makeBypassButton(cfg));
+  }
+
+  // a small dot in the header that toggles the node's live bypass on click
+  function makeBypassButton(cfg) {
+    return new go.Panel('Auto', {
+      column: 1, alignment: new go.Spot(1, 0.5, 0, -3),
+      cursor: 'pointer',
+      click: (e, obj) => toggleBypass(obj.part)
+    })
+      .add(
+        new go.Shape('Circle', { width: 11, height: 11, strokeWidth: 2, fill: cfg.color, stroke: cfg.color })
+          .bind('fill', 'bypassed', b => (b ? PALETTE.bypassedFill : cfg.color))
+          .bind('stroke', 'bypassed', b => (b ? PALETTE.bypassedStroke : cfg.color))
+      );
+  }
+
+  // flip a node's bypass state and crossfade it live (no rebuild)
+  function toggleBypass(node) {
+    const data = node.data;
+    myDiagram.model.commit(m => m.set(data, 'bypassed', !data.bypassed), 'bypass');
+    applyParam(data, 'bypassed');
+  }
+
+  // bypass/un-bypass every effect node in a group
+  function toggleGroupBypass(group) {
+    if (!group) return;
+    const target = !group.data.bypassed;
+    const members = [];
+    group.memberParts.each(p => {
+      // only effect nodes have a live bypass, skip links and the Output sink
+      if (p instanceof go.Node && p.data.category !== 'output') members.push(p.data);
+    });
+    myDiagram.model.commit(m => {
+      m.set(group.data, 'bypassed', target);
+      members.forEach(d => m.set(d, 'bypassed', target));
+    }, 'group bypass');
+    members.forEach(d => applyParam(d, 'bypassed')); // crossfade each live, no rebuild
+  }
+
+  // a +/- button that collapses or expands a group's contents
+  function makeGroupCollapseButton() {
+    const btn = go.GraphObject.build('SubGraphExpanderButton', { margin: new go.Margin(0, 8, 0, 0) });
+    const border = btn.findObject('ButtonBorder');
+    if (border) { border.fill = PALETTE.chipOff; border.stroke = null; }
+    const icon = btn.findObject('ButtonIcon');
+    if (icon) icon.stroke = PALETTE.defaultGroup;
+    return btn;
+  }
+
+  // collapse or expand a node, hides/shows its controls below the header
+  function toggleCollapse(node) {
+    const data = node.data;
+    myDiagram.model.commit(m => m.set(data, 'collapsed', !data.collapsed), 'collapse');
+    node.updateTargetBindings(); // recompute slider fills
+  }
+
+  // an input or output port, circle on the left or right edge
+  function makePort(portId, isOutput, cfg) {
+    return new go.Shape('Circle', {
+      portId: portId,
+      cursor: 'crosshair',
+      desiredSize: new go.Size(13, 13),
+      strokeWidth: 2,
+      fill: isOutput ? cfg.color : PALETTE.cardBg,
+      stroke: isOutput ? cfg.color : PALETTE.textLabel,
+      fromLinkable: isOutput,
+      toLinkable: !isOutput,
+      fromSpot: go.Spot.Right,
+      toSpot: go.Spot.Left,
+      alignment: isOutput ? new go.Spot(1, 0.5) : new go.Spot(0, 0.5),
+      alignmentFocus: go.Spot.Center,
+      mouseEnter: (e, p) => { p.stroke = PALETTE.textValue; },
+      mouseLeave: (e, p) => { p.stroke = isOutput ? cfg.color : PALETTE.textLabel; }
+    });
+  }
+
+  // makes a parameter row
+  function makeControl(c) {
+    if (c.type === 'choices') return makeChoices(c);
+    if (c.type === 'file') return makeFileButton(c);
+    return makeSliderRow(c);
+  }
+
+  // a row of selectable chips (waveform, filter type, etc.)
+  function makeChoices(c) {
+    const row = new go.Panel('Horizontal', { alignment: go.Spot.Left, margin: new go.Margin(6, 0, 0, 0) });
+    c.options.forEach(opt => {
+      row.add(
+        new go.Panel('Auto', {
+          cursor: 'pointer',
+          margin: new go.Margin(0, 4, 0, 0),
+          click: (e, obj) => {
+            const data = obj.part.data;
+            myDiagram.model.commit(m => m.set(data, c.prop, opt.value), 'set ' + c.prop);
+            applyParam(data, c.prop);
+          }
+        })
+          .add(
+            new go.Shape('RoundedRectangle', { parameter1: 4, strokeWidth: 0 })
+              .bind('fill', c.prop, v => (v === opt.value ? PALETTE.accent : PALETTE.chipOff)),
+            new go.TextBlock(opt.label, { font: '10px sans-serif', margin: new go.Margin(2, 7, 2, 7) })
+              .bind('stroke', c.prop, v => (v === opt.value ? PALETTE.dark : PALETTE.textChoiceOff))
+          )
+      );
+    });
+    return row;
+  }
+
+  // a "Load File…" button plus the name of the clip currently loaded
+  function makeFileButton(c) {
+    return new go.Panel('Vertical', { stretch: go.Stretch.Horizontal, defaultAlignment: go.Spot.Left, margin: new go.Margin(6, 0, 0, 0) })
+      .add(
+        new go.Panel('Auto', { cursor: 'pointer', click: (e, obj) => loadAudioFile(obj.part) })
+          .add(
+            new go.Shape('RoundedRectangle', { parameter1: 4, fill: PALETTE.chipOff, strokeWidth: 0 }),
+            new go.TextBlock('Load File…', { font: '10px sans-serif', stroke: PALETTE.textChoiceOff, margin: new go.Margin(3, 8, 3, 8) })
+          ),
+        new go.TextBlock({ font: '10px sans-serif', stroke: PALETTE.textValue, margin: new go.Margin(3, 0, 0, 0),
+            maxSize: new go.Size(SLIDER_W, NaN), wrap: go.Wrap.None, overflow: go.TextOverflow.Ellipsis })
+          .bind('text', c.prop, n => n || 'default sample')
+      );
+  }
+
+  // a labeled slider with a draggable track below
+  // the label row is a Table whose first column stretches, pushing the value to the right
+  function makeSliderRow(c) {
+    return new go.Panel('Vertical', {
+      stretch: go.Stretch.Horizontal,
+      defaultAlignment: go.Spot.Left,
+      margin: new go.Margin(6, 0, 0, 0)
+    })
+      .add(
+        new go.Panel('Table', { stretch: go.Stretch.Horizontal })
+          .add(
+            new go.TextBlock(c.label, { column: 0, alignment: go.Spot.Left, font: '10px sans-serif', stroke: PALETTE.textLabel }),
+            new go.Panel('Horizontal', { column: 1, alignment: go.Spot.Right })
+              .add(
+                new go.TextBlock({
+                  name: c.prop,
+                  font: '10px sans-serif',
+                  stroke: PALETTE.textValue,
+                  editable: true,
+                  margin: c.unit === '' ? 0 : new go.Margin(0, 2, 0, 0),
+                  textValidation: (tb, oldStr, newStr) => isFinite(parseVal(c, newStr)) // verify edits are valid numbers
+                })
+                  .bindTwoWay('text', c.prop,
+                    v => fmtVal(c, v),
+                    t => Math.min(c.max, Math.max(c.min, parseVal(c, t)))),
+                new go.TextBlock(c.unit, { font: '10px sans-serif', stroke: PALETTE.textValue, visible: c.unit === '' ? false : true })
+              )
+          ),
+        makeSlider(c)
+      );
+  }
+
+  // the draggable slider track. `isActionable` routes mouse events here so the
+  // ActionTool handles dragging instead of the node being moved.
+  function makeSlider(c) {
+    return new go.Panel('Spot', {
+      stretch: go.Stretch.Horizontal, height: 16,
+      background: 'transparent',
+      cursor: 'pointer',
+      isActionable: true,
+      margin: new go.Margin(3, 0, 0, 0),
+      actionDown: (e, obj) => sliderDrag(e, obj, c),
+      actionMove: (e, obj) => sliderDrag(e, obj, c)
+    })
+      .add(
+        // track spans the full panel width
+        new go.Shape('RoundedRectangle', { stretch: go.Stretch.Horizontal, height: 5, parameter1: 2.5, fill: PALETTE.dark, strokeWidth: 0 }),
+        // filled portion
+        new go.Shape('RoundedRectangle', { name: 'FILL', height: 5, parameter1: 2.5, fill: PALETTE.accent, strokeWidth: 0, alignment: go.Spot.Left, alignmentFocus: go.Spot.Left })
+          .bind('width', c.prop, (v, shp) => fillWidth(shp, v, c)),
+        // the thumb, the alignment offset insets its travel by half its full width
+        // (stroke included) at each end, so the circle stays inside the panel
+        new go.Shape('Circle', { width: THUMB, height: THUMB, fill: PALETTE.white, stroke: PALETTE.accent, strokeWidth: THUMB_STROKE })
+          .bind('alignment', c.prop, v => {
+            const f = clamp01(valToFrac(v, c.min, c.max, c.log));
+            return new go.Spot(f, 0.5, THUMB_FULL / 2 - f * THUMB_FULL, 0);
+          })
+      );
+  }
+
+  // filled width runs from the panel's left edge to the thumb's center. The thumb
+  // center travels over (panelWidth - THUMB_FULL), inset by THUMB_FULL/2 at the left.
+  function fillWidth(shp, v, c) {
+    const w = (shp.panel ? shp.panel.actualBounds.width : SLIDER_W) - THUMB_FULL;
+    const f = clamp01(valToFrac(v, c.min, c.max, c.log));
+    return Math.max(4, THUMB_FULL / 2 + f * w);
+  }
+
+  // called on slider press/drag: turn the mouse x into a value, store it in the
+  // model (without recording undo, since drags fire rapidly) and push it live.
+  function sliderDrag(e, obj, c) {
+    const data = obj.part.data;
+    const local = obj.getLocalPoint(e.documentPoint);
+    // map the click across the inset track (panel width minus the full thumb)
+    const r = THUMB_FULL / 2;
+    const f = clamp01((local.x - r) / (obj.actualBounds.width - THUMB_FULL));
+    const val = fracToVal(f, c.min, c.max, c.log);
+    myDiagram.model.commit(m => m.set(data, c.prop, val), null);
+    applyParam(data, c.prop);
+  }
+
+  // a live meter bar, its width is set each frame in updateMeters(). Two types:
+  //   'level'     — the Output node's signal level (green -> yellow -> red)
+  //   'reduction' — a Compressor's gain reduction, with a live dB readout above it
+  function makeMeter(cfg) {
+    if (cfg.meter === 'reduction') return makeReductionMeter(cfg);
+    return new go.Panel('Spot', { stretch: go.Stretch.Horizontal, height: 10, margin: new go.Margin(8, 0, 0, 0) })
+      .add(
+        new go.Shape('RoundedRectangle', { name: 'METERBG', stretch: go.Stretch.Horizontal, height: 8, parameter1: 3, fill: PALETTE.dark, strokeWidth: 0 }),
+        new go.Shape('RoundedRectangle', { name: 'METER', width: 2, height: 8, parameter1: 3, fill: PALETTE.meterLow, strokeWidth: 0, alignment: go.Spot.Left, alignmentFocus: go.Spot.Left })
+      );
+  }
+
+  // the Compressor's gain-reduction meter: a "Gain Reduction" label with a live dB
+  // readout (METERVAL), above a bar (METER) that grows with the amount of reduction
+  function makeReductionMeter(cfg) {
+    return new go.Panel('Vertical', { stretch: go.Stretch.Horizontal, defaultAlignment: go.Spot.Left, margin: new go.Margin(8, 0, 0, 0) })
+      .add(
+        new go.Panel('Table', { stretch: go.Stretch.Horizontal })
+          .add(
+            new go.TextBlock('Gain Reduction', { column: 0, alignment: go.Spot.Left, font: '10px sans-serif', stroke: PALETTE.textLabel }),
+            new go.TextBlock('0.0 dB', { name: 'METERVAL', column: 1, alignment: go.Spot.Right, font: '10px sans-serif', stroke: PALETTE.textValue })
+          ),
+        new go.Panel('Spot', { stretch: go.Stretch.Horizontal, height: 10, margin: new go.Margin(3, 0, 0, 0) })
+          .add(
+            new go.Shape('RoundedRectangle', { name: 'METERBG', stretch: go.Stretch.Horizontal, height: 8, parameter1: 3, fill: PALETTE.dark, strokeWidth: 0 }),
+            new go.Shape('RoundedRectangle', { name: 'METER', width: 2, height: 8, parameter1: 3, fill: cfg.color, strokeWidth: 0, alignment: go.Spot.Left, alignmentFocus: go.Spot.Left })
+          )
+      );
+  }
+
+  // a small, controls-free card shown in the palette
+  function makePaletteTemplate(cfg) {
+    return new go.Node('Auto', { cursor: 'grab' })
+      .add(
+        new go.Shape('RoundedRectangle', { parameter1: 7, fill: PALETTE.cardBg, stroke: cfg.color, strokeWidth: 1.5 }),
+        new go.Panel('Horizontal', { margin: 8 })
+          .add(
+            new go.Panel('Auto')
+              .add(
+                new go.Shape('RoundedRectangle', { parameter1: 5, fill: cfg.color, strokeWidth: 0 }),
+                new go.TextBlock(cfg.glyph, { stroke: PALETTE.dark, font: 'bold 10px sans-serif', margin: new go.Margin(2, 5, 2, 5) })
+              ),
+            new go.TextBlock(cfg.title, { stroke: PALETTE.textTitle, font: 'bold 12px sans-serif', margin: new go.Margin(0, 6, 0, 8) })
+          )
+      );
+  }
+
+  // ===========================================================================
+  // Web Audio API graph
+  //
+  // The GoJS model is the source of truth for the patch. buildAudioGraph()
+  // walks the model and creates a matching graph of real AudioNodes, with
+  // the links becoming AudioNode.connect() calls. applyParam() pushes a single
+  // slider/choice change into the already-running graph without rebuilding it.
+  // ===========================================================================
+  var audioCtx = null;        // the live AudioContext (null when stopped)
+  var masterGain = null;      // everything feeds this before the speakers
+  var analyser = null;        // taps the master output to drive the level meter
+  var audioNodesByKey = {};   // model key -> { in, out, ...refs } for that node
+  var isPlaying = false;
+  var masterVolume = 0.6;
+  var reverbIR = null; // one shared impulse response, decoded once at startup
+  const REVERB_IR_URL = 'https://gojs.net/latest/samples/audio/highly_damped_large_room.wav';
+
+  // Sample node: audio-file sources
+  const DEFAULT_SAMPLE_URL = 'https://gojs.net/latest/samples/audio/guitar_demo_audio.wav';
+  var defaultSampleBuffer = null;  // the default clip, decoded once at startup
+  var sampleBuffers = {};          // model key -> decoded AudioBuffer from a loaded file
+  var decodeCtx = null;            // a lone context used only to decode files
+
+  // one AudioContext just for decoding; decoded buffers play fine in the live audioCtx
+  function getDecodeCtx() {
+    return decodeCtx || (decodeCtx = new (window.AudioContext || window.webkitAudioContext)());
+  }
+
+  // fetch + decode the default clip once; ignored if the file isn't present yet
+  function loadDefaultSample() {
+    fetch(DEFAULT_SAMPLE_URL)
+      .then(r => r.arrayBuffer())
+      .then(b => getDecodeCtx().decodeAudioData(b))
+      .then(buf => { defaultSampleBuffer = buf; })
+      .catch(() => {});
+  }
+
+  // decode the shared reverb impulse response once at startup, so a bounce taken
+  // before the first Play still includes the reverb tail
+  function preloadReverbIR() {
+    fetch(REVERB_IR_URL)
+      .then(r => r.arrayBuffer())
+      .then(b => getDecodeCtx().decodeAudioData(b))
+      .then(buf => { reverbIR = buf; })
+      .catch(() => {});
+  }
+
+  // open a file picker, decode the chosen audio file, and play it from this node
+  function loadAudioFile(node) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*';
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      file.arrayBuffer()
+        .then(b => getDecodeCtx().decodeAudioData(b))
+        .then(buf => {
+          sampleBuffers[node.data.key] = buf;
+          myDiagram.model.commit(m => m.set(node.data, 'fileName', file.name), 'load file');
+          if (isPlaying) scheduleRebuild(); // swap the new clip into the live graph
+        })
+        .catch(() => {}); // unsupported/corrupt file — leave the node unchanged
+    };
+    input.click();
+  }
+
+  // fetch + decode the impulse-response WAV, then set it on the convolver (live
+  // fallback for the rare case Play happens before preloadReverbIR() resolves)
+  function loadReverbIR(ctx, conv) {
+    fetch(REVERB_IR_URL)
+      .then(r => r.arrayBuffer())
+      .then(b => ctx.decodeAudioData(b))
+      .then(buf => { reverbIR = buf; if (audioCtx === ctx) conv.buffer = buf; });
+  }
+
+  // Wrap an effect, given its entry & exit AudioNodes, with a processed path
+  // and a parallel straight-through path, crossfaded by two gains. This is what
+  // makes bypass live: setBypass() fades between the paths, no rebuild, no click.
+  function effectWrap(ctx, entry, exit, refs, bypassed) {
+    const input = ctx.createGain();
+    const out = ctx.createGain();
+    const proc = ctx.createGain();                               // processed-path level
+    const byp = ctx.createGain();                                // bypass-path level
+    input.connect(entry); exit.connect(proc); proc.connect(out); // processed path
+    input.connect(byp); byp.connect(out);                        // straight-through path
+    proc.gain.value = bypassed ? 0 : 1;
+    byp.gain.value = bypassed ? 1 : 0;
+    return Object.assign({ in: input, out, proc, byp }, refs);
+  }
+
+  // crossfade between the processed and bypass paths, click-free, no rebuild
+  function setBypass(wa, on) {
+    if (!wa || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    if (wa.proc) {
+      wa.proc.gain.setTargetAtTime(on ? 0 : 1, t, 0.01);
+      wa.byp.gain.setTargetAtTime(on ? 1 : 0, t, 0.01);
+    } else if (wa.mute) {
+      wa.mute.gain.setTargetAtTime(on ? 0 : 1, t, 0.01);
+    }
+  }
+
+  // a WaveShaper curve for the Distortion node. higher `drive` = more distortion;
+  // drive 0 = no change. 'soft' rounds the peaks off smoothly (warmer), 'hard'
+  // amplifies then chops flat at ±1 (buzzier). g amplifies the signal either way.
+  function makeDistortionCurve(drive, mode) {
+    const n = 256;
+    const curve = new Float32Array(n);
+    const g = 1 + drive;
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1;                 // input sample, -1..1
+      curve[i] = mode === 'hard'
+        ? Math.max(-1, Math.min(1, x * g))             // amplify, then chop at ±1
+        : (g * x) / (1 + drive * Math.abs(x));         // smooth soft-clip
+    }
+    return curve;
+  }
+
+  // Build one AudioNode wrapper per node type. Each returns an object exposing:
+  //   in    : the AudioNode that incoming cables connect TO   (null if a source)
+  //   out   : the AudioNode that outgoing cables connect FROM (null if a sink)
+  //   start : (optional) called once after wiring, to start sources
+  // plus any refs applyParam() needs to tweak parameters live. Effect nodes go
+  // through effectWrap() so they can be bypassed live.
+  function createAudioNode(data, ctx, master) {
+    switch (data.category) {
+      case 'oscillator': {
+        const osc = ctx.createOscillator();
+        osc.type = data.wave;
+        osc.frequency.value = data.freq;
+        const level = ctx.createGain();
+        level.gain.value = data.level;
+        const mute = ctx.createGain();
+        mute.gain.value = data.bypassed ? 0 : 1;
+        osc.connect(level); level.connect(mute);
+        return { osc, level, mute, in: null, out: mute, start: () => osc.start() };
+      }
+      case 'sample': {
+        const src = ctx.createBufferSource();
+        src.buffer = sampleBuffers[data.key] || defaultSampleBuffer; // loaded file, else default
+        src.loop = !!data.loop;
+        src.detune.value = data.pitch ?? 0; // tape-style pitch shift in cents (also changes speed/duration)
+        const level = ctx.createGain();
+        level.gain.value = data.level;
+        const mute = ctx.createGain();
+        mute.gain.value = data.bypassed ? 0 : 1;
+        src.connect(level); level.connect(mute);
+        return { src, level, mute, in: null, out: mute, start: () => { if (src.buffer) src.start(); } };
+      }
+      case 'gain': {
+        const g = ctx.createGain();
+        g.gain.value = data.gain;
+        return effectWrap(ctx, g, g, { gain: g }, data.bypassed);
+      }
+      case 'filter': {
+        const f = ctx.createBiquadFilter();
+        f.type = data.filterType;
+        f.frequency.value = data.freq;
+        f.Q.value = data.q;
+        return effectWrap(ctx, f, f, { filter: f }, data.bypassed);
+      }
+      case 'eq': {
+        const b1 = ctx.createBiquadFilter(); b1.type = 'peaking';
+          b1.frequency.value = data.band1freq; b1.Q.value = data.band1q; b1.gain.value = data.band1gain;
+        const b2 = ctx.createBiquadFilter(); b2.type = 'peaking';
+          b2.frequency.value = data.band2freq; b2.Q.value = data.band2q; b2.gain.value = data.band2gain;
+        const b3 = ctx.createBiquadFilter(); b3.type = 'peaking';
+          b3.frequency.value = data.band3freq; b3.Q.value = data.band3q; b3.gain.value = data.band3gain;
+        b1.connect(b2);
+        b2.connect(b3);
+        return effectWrap(ctx, b1, b3, { b1, b2, b3 }, data.bypassed);
+      }
+      case 'compressor': {
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = data.threshold;
+        comp.knee.value = data.knee;
+        comp.ratio.value = data.ratio;
+        comp.attack.value = data.attack;
+        comp.release.value = data.release;
+        return effectWrap(ctx, comp, comp, { comp }, data.bypassed);
+      }
+      case 'distortion': {
+        const shaper = ctx.createWaveShaper();
+        shaper.curve = makeDistortionCurve(data.drive, data.mode);
+        shaper.oversample = '4x'; // smoother, less aliasing
+        return effectWrap(ctx, shaper, shaper, { shaper }, data.bypassed);
+      }
+      case 'delay': {
+        // a feedback delay mixing the unprocessed (dry) and delayed (wet) signals
+        const entry = ctx.createGain();
+        const dry = ctx.createGain();
+        dry.gain.value = data.dry;
+        const delay = ctx.createDelay(2.0);
+        delay.delayTime.value = data.time;
+        const feedback = ctx.createGain();
+        feedback.gain.value = data.feedback;
+        const wet = ctx.createGain();
+        wet.gain.value = data.wet;
+        const exit = ctx.createGain();
+        entry.connect(dry); dry.connect(exit);    // dry path
+        entry.connect(delay);                     // wet path
+        delay.connect(feedback);
+        feedback.connect(delay);                  // feedback loop
+        delay.connect(wet); wet.connect(exit);    // wet level -> mix
+        return effectWrap(ctx, entry, exit, { delay, feedback, wet, dry }, data.bypassed);
+      }
+      case 'reverb': {
+        const entry = ctx.createGain();
+        const conv = ctx.createConvolver();
+        const wet = ctx.createGain();
+        wet.gain.value = data.wet;
+        const dry = ctx.createGain();
+        dry.gain.value = data.dry;
+        const exit = ctx.createGain();
+        entry.connect(dry); dry.connect(exit);                     // dry path
+        entry.connect(conv); conv.connect(wet); wet.connect(exit); // wet (reverb) path
+        if (reverbIR) conv.buffer = reverbIR;                      // cached after first load
+        else loadReverbIR(ctx, conv);                              // fetch+decode once, set when ready
+        return effectWrap(ctx, entry, exit, { wet, dry }, data.bypassed);
+      }
+      case 'panner': {
+        const p = ctx.createStereoPanner();
+        p.pan.value = data.pan;
+        return effectWrap(ctx, p, p, { panner: p }, data.bypassed);
+      }
+      case 'output':
+        // every Output node feeds the shared master bus -> speakers
+        return { in: master, out: null };
+      default:
+        return null;
+    }
+  }
+
+  // push a single changed property into the live graph
+  function applyParam(data, prop) {
+    const wa = audioNodesByKey[data.key];
+    if (!wa || !audioCtx) return;
+    if (prop === 'bypassed') { setBypass(wa, data.bypassed); return; } // generic, any effect
+    const t = audioCtx.currentTime;
+    const ramp = (param, value) => param.setTargetAtTime(value, t, 0.01);
+    switch (data.category) {
+      case 'oscillator':
+        if (prop === 'freq') ramp(wa.osc.frequency, data.freq);
+        else if (prop === 'level') ramp(wa.level.gain, data.level);
+        else if (prop === 'wave') wa.osc.type = data.wave;
+        break;
+      case 'sample':
+        if (prop === 'level') ramp(wa.level.gain, data.level);
+        else if (prop === 'loop') wa.src.loop = !!data.loop; // takes effect live
+        else if (prop === 'pitch') ramp(wa.src.detune, data.pitch);
+        break;
+      case 'gain':
+        ramp(wa.gain.gain, data.gain);
+        break;
+      case 'filter':
+        if (prop === 'freq') ramp(wa.filter.frequency, data.freq);
+        else if (prop === 'q') ramp(wa.filter.Q, data.q);
+        else if (prop === 'filterType') wa.filter.type = data.filterType;
+        break;
+      case 'eq':
+        if (prop === 'band1freq') ramp(wa.b1.frequency, data.band1freq);
+        else if (prop === 'band1q') ramp(wa.b1.Q, data.band1q);
+        else if (prop === 'band1gain') ramp(wa.b1.gain, data.band1gain);
+        else if (prop === 'band2freq') ramp(wa.b2.frequency, data.band2freq);
+        else if (prop === 'band2q') ramp(wa.b2.Q, data.band2q);
+        else if (prop === 'band2gain') ramp(wa.b2.gain, data.band2gain);
+        else if (prop === 'band3freq') ramp(wa.b3.frequency, data.band3freq);
+        else if (prop === 'band3q') ramp(wa.b3.Q, data.band3q);
+        else if (prop === 'band3gain') ramp(wa.b3.gain, data.band3gain);
+        break;
+      case 'compressor':
+        if (prop === 'threshold') ramp(wa.comp.threshold, data.threshold);
+        else if (prop === 'knee') ramp(wa.comp.knee, data.knee);
+        else if (prop === 'ratio') ramp(wa.comp.ratio, data.ratio);
+        else if (prop === 'attack') ramp(wa.comp.attack, data.attack);
+        else if (prop === 'release') ramp(wa.comp.release, data.release);
+        break;
+      case 'distortion':
+        wa.shaper.curve = makeDistortionCurve(data.drive, data.mode); // drive or mode changed
+        break;
+      case 'delay':
+        if (prop === 'time') ramp(wa.delay.delayTime, data.time);
+        else if (prop === 'feedback') ramp(wa.feedback.gain, data.feedback);
+        else if (prop === 'wet') ramp(wa.wet.gain, data.wet);
+        else if (prop === 'dry') ramp(wa.dry.gain, data.dry);
+        break;
+      case 'reverb':
+        if (prop === 'wet') ramp(wa.wet.gain, data.wet);
+        else if (prop === 'dry') ramp(wa.dry.gain, data.dry);
+        break;
+      case 'panner':
+        ramp(wa.panner.pan, data.pan);
+        break;
+    }
+  }
+
+  // build the model's Web Audio graph into ctx, returns the node map and the source nodes that still need .start()
+  // shared by live playback and offline bounce.
+  function wireGraph(ctx, master) {
+    const nodes = {};
+    const starters = [];
+    myDiagram.model.nodeDataArray.forEach(d => {
+      const wa = createAudioNode(d, ctx, master);
+      if (!wa) return;
+      nodes[d.key] = wa;
+      if (wa.start) starters.push(wa);
+    });
+    // turn each cable into an AudioNode.connect() call
+    myDiagram.model.linkDataArray.forEach(l => {
+      const a = nodes[l.from];
+      const b = nodes[l.to];
+      if (a && b && a.out && b.in) a.out.connect(b.in);
+    });
+    return { nodes, starters };
+  }
+
+  function buildAudioGraph() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = masterVolume;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    masterGain.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    const { nodes, starters } = wireGraph(audioCtx, masterGain);
+    audioNodesByKey = nodes;
+    starters.forEach(wa => wa.start());
+  }
+
+  // starting/stopping audio playback and metering
+  function togglePlay() {
+    if (isPlaying) stopAudio();
+    else startAudio();
+  }
+
+  function startAudio() {
+    buildAudioGraph();
+    isPlaying = true;
+    updatePlayButton();
+    startMeter();
+  }
+
+  function stopAudio() {
+    stopMeter();
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    audioNodesByKey = {};
+    masterGain = analyser = null;
+    isPlaying = false;
+    updatePlayButton();
+  }
+
+  // structural edits while playing land here, rebuild in a fresh context
+  function rebuildAudioGraph() {
+    stopMeter();
+    if (audioCtx) audioCtx.close();
+    buildAudioGraph();
+    startMeter();
+  }
+
+  // delay audio graph rebuilds to a new callback to avoid infinite recursion in model changed listener
+  var rebuildTimer = null;
+  function scheduleRebuild() {
+    if (rebuildTimer !== null) return;
+    rebuildTimer = setTimeout(() => {
+      rebuildTimer = null;
+      if (isPlaying) rebuildAudioGraph();
+    }, 0);
+  }
+
+
+  // ===========================================================================
+  // Bounce: render the patch offline and download it as a WAV file
+  // ===========================================================================
+  const RENDER_TAIL = 2;       // seconds of tail so delay/reverb can decay
+  const RENDER_FALLBACK = 8;   // oscillator-only patches have no inherent length
+
+  // render length = longest loaded sample (or a fallback), plus the decay tail (unless toggled off)
+  function bounceSeconds() {
+    let longest = 0;
+    myDiagram.model.nodeDataArray.forEach(d => {
+      if (d.category !== 'sample') return;
+      const buf = sampleBuffers[d.key] || defaultSampleBuffer;
+      if (buf) longest = Math.max(longest, buf.duration);
+    });
+    const tail = document.getElementById('includeTail').checked ? RENDER_TAIL : 0;
+    return (longest || RENDER_FALLBACK) + tail;
+  }
+
+  // rebuild the current patch in an OfflineAudioContext, render it faster than real time, and download the result
+  async function bounce() {
+    // render at the rate the sample/IR buffers were decoded at so nothing resamples
+    const rate = getDecodeCtx().sampleRate;
+    const offline = new OfflineAudioContext(2, Math.ceil(bounceSeconds() * rate), rate);
+    const master = offline.createGain();
+    master.gain.value = masterVolume;
+    master.connect(offline.destination);
+    const { starters } = wireGraph(offline, master);
+    starters.forEach(wa => wa.start());
+    const rendered = await offline.startRendering();
+    downloadBlob(bufferToWav(rendered), 'audio-bounce.wav');
+  }
+
+  // encode an AudioBuffer as a 16-bit PCM WAV Blob
+  function bufferToWav(buf) {
+    const chs = buf.numberOfChannels, len = buf.length, data = [];
+    for (let c = 0; c < chs; c++) data.push(buf.getChannelData(c));
+    const view = new DataView(new ArrayBuffer(44 + len * chs * 2));
+    const str = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); view.setUint32(4, 36 + len * chs * 2, true); str(8, 'WAVE');
+    str(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, chs, true); view.setUint32(24, buf.sampleRate, true);
+    view.setUint32(28, buf.sampleRate * chs * 2, true); view.setUint16(32, chs * 2, true);
+    view.setUint16(34, 16, true); str(36, 'data'); view.setUint32(40, len * chs * 2, true);
+    let off = 44;
+    for (let i = 0; i < len; i++)
+      for (let c = 0; c < chs; c++) {
+        const s = Math.max(-1, Math.min(1, data[c][i]));
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true); off += 2;
+      }
+    return new Blob([view], { type: 'audio/wav' });
+  }
+
+  // download a Blob under the given filename
+  function downloadBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // master volume controls
+  function setMasterVolume(value) {
+    masterVolume = parseFloat(value);
+    document.getElementById('masterValue').textContent = Math.round(masterVolume * 100) + '%';
+    if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.01);
+  }
+
+  function updatePlayButton() {
+    const btn = document.getElementById('playButton');
+    if (!btn) return;
+    btn.textContent = isPlaying ? '■ Stop' : '▶ Play';
+    btn.classList.toggle('playing', isPlaying);
+  }
+
+  // ===========================================================================
+  // Output level meter
+  // ===========================================================================
+  const METER_WARN = 0.7;   // approaching full scale: caution (yellow), ~ -3 dBFS
+  const CLIP_LEVEL = 0.99;  // at/over full scale: the destination clips here (red)
+  const GR_RANGE = 20;      // compressor gain-reduction meter spans 0 down to -GR_RANGE dB
+
+  var meterRAF = null;
+  var meterLevel = 0;       // smoothed display level: fast attack, slow release
+  var clipHoldUntil = 0;    // keep the clip light lit briefly after an overload
+
+  function startMeter() {
+    const samples = new Float32Array(analyser.fftSize);
+    meterLevel = 0;
+    clipHoldUntil = 0;
+    function frame() {
+      analyser.getFloatTimeDomainData(samples); // raw waveform headed to the speakers
+      let peak = 0;
+      for (let i = 0; i < samples.length; i++) {
+        const a = Math.abs(samples[i]);
+        if (a > peak) peak = a;
+      }
+      // jump up instantly so transients register, ease down so the bar stays readable
+      meterLevel = peak > meterLevel ? peak : meterLevel * 0.9 + peak * 0.1;
+      // a clipped peak may last only a single frame: latch the clip light briefly
+      const now = audioCtx.currentTime;
+      if (peak >= CLIP_LEVEL) clipHoldUntil = now + 1;
+      updateMeters(meterLevel, now < clipHoldUntil);
+      meterRAF = requestAnimationFrame(frame);
+    }
+    meterRAF = requestAnimationFrame(frame);
+  }
+
+  function stopMeter() {
+    if (meterRAF !== null) cancelAnimationFrame(meterRAF);
+    meterRAF = null;
+    updateMeters(0, false);
+  }
+
+  // resize/recolor every live meter bar, not an undoable change
+  // Output nodes show the master signal level, filling to the right edge and turning red when it clips
+  // Compressor nodes show gain reduction read live from their DynamicsCompressorNode.reduction
+  function updateMeters(level, clipping) {
+    myDiagram.commit(d => {
+      d.nodes.each(n => {
+        const bar = n.findObject('METER');
+        const bg = n.findObject('METERBG');
+        if (!bar || !bg) return;
+        const w = bg.actualBounds.width || SLIDER_W;
+        if (n.category === 'output') {
+          const f = Math.min(1, level);
+          bar.width = Math.max(2, f * w);
+          bar.fill = clipping ? PALETTE.meterHigh : f >= METER_WARN ? PALETTE.meterMid : PALETTE.meterLow;
+        } else if (n.category === 'compressor') {
+          // 0 when stopped (meterRAF cleared) so the bar and readout reset cleanly
+          const wa = audioNodesByKey[n.data.key];
+          const reduction = (meterRAF !== null && wa && wa.comp) ? wa.comp.reduction : 0;
+          bar.width = Math.max(2, Math.min(1, -reduction / GR_RANGE) * w);
+          const val = n.findObject('METERVAL');
+          if (val) val.text = reduction.toFixed(1) + ' dB';
+        }
+      });
+    }, null);
+  }
+
+  // Save / load the whole patch as JSON
+  function save() {
+    document.getElementById('mySavedModel').value = myDiagram.model.toJson();
+  }
+  function load() {
+    myDiagram.model = go.Model.fromJson(document.getElementById('mySavedModel').value);
+    if (isPlaying) rebuildAudioGraph(); // re-wire the live audio to the loaded patch
+  }
+
+  window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
