@@ -1,5 +1,67 @@
-# Object file
-*.o
+# ==========================================
+# File Sensitif & Lingkungan (CRITICAL)
+# ==========================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
 
-# Ada Library Information
-*.ali
+# ==========================================
+# System & OS Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# Editor & IDE Configs
+# ==========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# ==========================================
+# Node.js / JavaScript Dependencies & Logs
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.yarn/
+dist/
+build/
+
+# ==========================================
+# Python (Jika Menggunakan Python)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+
+# ==========================================
+# Temporary & Cache Files
+# ==========================================
+*.tmp
+*.log
+*.cache
+.cache/
+tmp/

@@ -1,0 +1,55 @@
+# Aturan Dasar dan Prinsip Dasar
+## Aturan Utama
+1. Jangan pernah generate atau membuat gambar, vidio atau media lainnya.
+2. Jangan pernah menggunakan pustaka / dependensi dengan CDN tanpa ijin.
+3. Jangan pernah menambahkan fitur apapun selain yang diminta.
+4. Jangan pernah membuat style di luar perintah panduan tampilan pada bagian  `Prinsip Gaya Visual Yang Harus Dijaga`
+
+## Standar Changelog & Requirements
+1. Setiap kali ada penambahan, perubahan, atau penghapusan fitur pada setiap script, AI **wajib** memperbarui file `README.md`.
+2. File `README.md` harus selalu memuat daftar fitur aktif (*Active Features*) dan daftar kebutuhan (*Requirements*) yang diperbarui secara real-time.
+3. File `README.md` memuat pedoman instalasi aplikasi dan langkah-langkah yang perlu dilakukan untuk mempersiapkan aplikasi.
+4. File `README.md` memuat deskripsi aplikasi yang mudah dipahami, terdiri dari fungsi dan kegunaan aplikasi serta gambaran umum urgensinya.
+5. File `README.md` memuat daftar dependensi dan pustaka yang digunakan (walapun sudah ada pada package.json)
+
+## Batasan Teknis
+1. Pustaka dan depedensi NPM selalu dimuat pada folder node_modules dan tidak dipanggil menggunakan CDN.
+2. Pustaka dan depedensi composer dimuat pada folder vendors
+3. Gunakan file tunggal `index.html` dengan CSS internal kecuali diminta secara khusus (misalnya halaman login.html, error.html dll).
+4. Terapkan desain yang bersih dan responsif menggunakan Flexbox atau CSS Grid.
+5. Apabila menggunakan bootstrap, maka utamakan menggunakan class element dari bootstrap dan anda boleh melakukan kostumasi pada assets/css/style.css
+
+## Dokumen Wajib Yang Harus Selalu Dibaca Setiap Kali Akan Melakukan Eksekusi Perintah
+1. .agentrules
+2. README.md
+3. .gitignore
+4. .package-lock.json
+5. package.json
+6. package-lock.json
+7. .env
+
+## Prinsip Gaya Visual Yang Harus Dijaga
+1. Responsif (Mobile First)
+2. Gunakan Icon Yang Relevan Dengan Fungsi Fitur Atau Aksi
+3. Setiap transisi harus menggunakan efek yang lembut dan teratur.
+4. Utamakan efisiensi sumber daya dan akses cepat serta ringan.
+5. Apabila aplikasi memiliki mode gelap dan mode terang maka perlu dipertimbangkan penerapan warna pada styl css agar tidak bentrok.
+
+## Aturan Penulisan Kode
+1. Selalu menyertakan komentar pada setiap blok agar mudah dipahami fungsi dan tujuannya
+2. **Semantic & Clean:** Gunakan tag HTML5 semantik (`<header>`, `<main>`, `<section>`, dll.) dan pastikan indentasi konsisten (2 spasi).
+3. **CSS Maintainability:** Tulis CSS yang bersih, terorganisir per bagian (Global, Layout, Component), dan gunakan penamaan kelas yang deskriptif. Hindari *inline style* kecuali sangat mendesak.
+4. **Self-Documenting Code:** Berikan komentar singkat (`/* Komentar Bagian */`) pada bagian-bagian kode CSS/HTML yang penting agar mudah dibaca kembali di masa depan.
+
+## Aturan penggunaan file dan directory standar
+1. `assets\css\style.css` : Style custom umum yang mempengaruhi semua halaman ditulis pada file ini.
+2. `assets\js\main.js` : Javascript custom bersifat global yang mempengaruhi semua halaman ditulis pada file ini.
+3. `assets\fonts` : Koleksi font disimpan di folder ini.
+4. `assets\fonts\fonts.css` : CSS font ditulis di file ini.
+5. `assets\img\pavicon` : Pavicon dan file manifestasi disimpan pada folder ini.
+6. `data\json` : Data dalam format json disimpan pada folder ini.
+7. `data\sql` : Data dalam format sql disimpan pada folder ini.
+
+## Informasi Dan Pengetahuan Lain
+1. Dokumen ini perlu di evaluasi karena mungkin terdapat kesalahan penulisan, logika atau kekeliruan mendefinisikan tujuan pada promt awal. 
+2. Agent bisa langsung bertanya pada author, melakukan evaluasi langsung pada dokumen ini, dan atau membandingkan dengan kerangka logis pada prompt apabila ada yang tidak sesuai atau bertolak belakang. 

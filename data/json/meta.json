@@ -1,0 +1,52 @@
+{
+  "seo_metadata": {
+    "title": "Workflow Generator",
+    "description": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
+    "keywords": [
+      "Workflow",
+      "Generator",
+      "HTML",
+      "CSS",
+      "Javascript"
+    ],
+    "author": "Solihul Hadi",
+    "robots": "index, follow",
+    "canonical_url": "http://localhost/workflow-generator/",
+    "language": "id",
+    "viewport": "width=device-width, initial-scale=1.0"
+  },
+  "open_graph": {
+    "og:type": "website",
+    "og:title": "Workflow Generator",
+    "og:description": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
+    "og:url": "http://localhost/workflow-generator/",
+    "og:image": "http://localhost/workflow-generator/assets/img/user/person.png",
+    "og:site_name": "Workflow Generator",
+    "og:locale": "id_ID"
+  },
+  "twitter_card": {
+    "twitter:card": "summary_large_image",
+    "twitter:title": "Workflow Generator",
+    "twitter:description": "Aplikasi berbasis web yang berfungsi membuat workflow interaktif sederhana",
+    "twitter:image": "http://localhost/workflow-generator/assets/img/user/person.png"
+  },
+  "schema_json_ld": {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Solihul Hadi",
+    "jobTitle": "Web Developer",
+    "url": "http://localhost/workflow-generator/",
+    "image": "http://localhost/workflow-generator/assets/img/user/person.png",
+    "knowsAbout": [
+      "Workflow",
+      "Generator",
+      "HTML",
+      "CSS",
+      "Javascript"
+    ],
+    "sameAs": [
+      "https://github.com/solihulhadi141213",
+      "https://linkedin.com/in/solihulhadi141213"
+    ]
+  }
+}

@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Neon Workflow</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 32px;
+            background: #080d18;
+            color: #e5efff;
+            font-family: Arial, sans-serif;
+        }
+
+        h2 {
+            margin: 0 0 8px;
+        }
+
+        .subtitle {
+            color: #8795ad;
+            margin-bottom: 28px;
+        }
+
+        .workflow-wrapper {
+            overflow-x: auto;
+            border: 1px solid #253149;
+            border-radius: 16px;
+            background: #0b1220;
+        }
+
+        .workflow {
+            position: relative;
+            width: 100%;
+            min-width: 900px;
+            height: 320px;
+        }
+
+        .connections {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .cable {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 5px currentColor);
+        }
+
+        .cyan {
+            stroke: #00e5ff;
+            color: #00e5ff;
+        }
+
+        .purple {
+            stroke: #a855f7;
+            color: #a855f7;
+        }
+
+        .orange {
+            stroke: #ff9d42;
+            color: #ff9d42;
+        }
+
+        .node {
+            position: absolute;
+            top: 105px;
+            width: 150px;
+            height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            background: #111d30;
+            border: 1px solid #34445e;
+            border-radius: 12px;
+            box-shadow: 0 0 18px #0008;
+            z-index: 1;
+        }
+
+        .node-icon {
+            font-size: 23px;
+        }
+
+        .node-name {
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .node-status {
+            font-size: 11px;
+            color: #91a3bd;
+        }
+
+        .node-1 { left: 3%; }
+        .node-2 { left: 28%; }
+        .node-3 { left: 53%; }
+        .node-4 { left: 78%; }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Workflow Monitor</h2>
+    <div class="subtitle">
+        Visualisasi aliran data antarsistem
+    </div>
+
+    <div class="workflow-wrapper">
+        <div class="workflow">
+
+            <!-- Kabel penghubung -->
+            <svg class="connections"
+                 viewBox="0 0 900 320"
+                 preserveAspectRatio="none">
+
+                <path class="cable cyan"
+                      d="M 150 150 H 250" />
+
+                <path class="cable purple"
+                      d="M 375 150 H 475" />
+
+                <path class="cable orange"
+                      d="M 600 150 H 700" />
+
+            </svg>
+
+            <!-- Node 1 -->
+            <div class="node node-1">
+                <div class="node-icon">📥</div>
+                <div class="node-name">Data Input</div>
+                <div class="node-status">Menunggu data</div>
+            </div>
+
+            <!-- Node 2 -->
+            <div class="node node-2">
+                <div class="node-icon">⚙️</div>
+                <div class="node-name">Processing</div>
+                <div class="node-status">Siap diproses</div>
+            </div>
+
+            <!-- Node 3 -->
+            <div class="node node-3">
+                <div class="node-icon">🔌</div>
+                <div class="node-name">API Service</div>
+                <div class="node-status">Terhubung</div>
+            </div>
+
+            <!-- Node 4 -->
+            <div class="node node-4">
+                <div class="node-icon">🗄️</div>
+                <div class="node-name">Database</div>
+                <div class="node-status">Siap menerima</div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
